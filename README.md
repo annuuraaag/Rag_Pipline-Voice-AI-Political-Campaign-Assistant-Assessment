@@ -90,6 +90,107 @@ More detail:
 - [docs/API.md](docs/API.md): full API reference.
 
 ---
+## Quick start
+
+Choose one path: **Option A (Docker)** is recommended and needs the fewest steps. **Option B**
+runs everything directly with Python and Node.js.
+
+### Option A: Run with Docker (recommended)
+
+**Step 1: Install the tools** (one time)
+- [Git](https://git-scm.com/downloads)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/). After installing, open it and
+  wait until it says *Engine running*. On Windows, accept the WSL 2 setup if prompted.
+- Chrome, Edge or Safari, for live voice input.
+
+**Step 2: Get a Groq API key** (free, optional)
+1. Sign in at https://console.groq.com/keys.
+2. Click **Create API Key** and copy it.
+
+Without a key the app still works; answers are short quotes from the documents instead of
+LLM-written answers.
+
+**Step 3: Download the code**
+```bash
+git clone https://github.com/annuuraaag/Rag_Pipline-Voice-AI-Political-Campaign-Assistant-Assessment.git
+cd Rag_Pipline-Voice-AI-Political-Campaign-Assistant-Assessment
+```
+
+**Step 4: Create your settings file**
+```bash
+cp .env.example .env            # macOS / Linux / Git Bash
+copy .env.example .env          # Windows Command Prompt / PowerShell
+```
+Open `.env` in any text editor and set your key:
+```
+GROQ_API_KEY=gsk_your_key_here
+```
+`.env` is git-ignored, so your key is never committed.
+
+**Step 5: Build and start**
+```bash
+docker compose up --build
+```
+The first run takes a few minutes: it downloads Python and Node images and the AI models.
+It is ready when the log shows `Application startup complete`. Later starts take seconds.
+
+**Step 6: Open the app**
+- **Web app:** http://localhost:5173
+  1. Allow microphone access when asked.
+  2. Tap the orb and ask: *"What healthcare initiatives does the candidate propose for Vijayawada?"*
+- **API docs:** http://localhost:8000/docs
+- **Health check:** http://localhost:8000/health. `"status": "ok"` means everything is connected.
+
+The 10 sample documents are indexed automatically on first start.
+
+**Step 7: Stop or reset**
+```bash
+docker compose down             # stop (keeps your uploaded documents)
+docker compose down -v          # stop and delete all indexed data (fresh start)
+docker compose up -d --build    # start again in the background after pulling new code
+```
+
+### Option B: Run without Docker
+
+**Requirements:** Python 3.11+, Node.js 20+, Git.
+
+**Step 1: Clone the repository** and enter the folder (as in Option A, Step 3).
+
+**Step 2: Set up the backend**
+```bash
+python -m venv .venv
+source .venv/bin/activate                    # Windows: .venv\Scripts\activate
+pip install -r backend/requirements-dev.txt
+pip install --no-deps -r backend/requirements-ocr.txt
+python scripts/download_models.py            # downloads embedding + reranker models into models/
+cp .env.example .env                         # then add GROQ_API_KEY (Windows: copy)
+```
+
+**Step 3: Start the API** (embedded vector database, no separate server needed)
+```bash
+cd backend
+SEED_SAMPLE_DATA=true uvicorn app.main:app --port 8000
+```
+On Windows PowerShell, set the variable first: `$env:SEED_SAMPLE_DATA="true"; uvicorn app.main:app --port 8000`
+
+**Step 4: Start the web app** in a second terminal
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open http://localhost:5173. The dev server forwards `/api` calls to the backend on port 8000.
+
+### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `docker: command not found` or `Cannot connect to the Docker daemon` | Start Docker Desktop and wait for *Engine running* |
+| Port 5173, 8000 or 6333 already in use | Stop the other program, or change the left-hand port in `docker-compose.yml` |
+| Microphone button does nothing | Allow the microphone in the browser (lock icon in the address bar), and use Chrome or Edge |
+| Sidebar says *Offline answers* | `GROQ_API_KEY` is missing in `.env`. Add it and run `docker compose up -d` |
+| Old version still showing after pulling new code | `docker compose up -d --build`, then hard-refresh the browser (Ctrl+Shift+R) |
+| Answers ignore newly uploaded documents | Make sure the same campaign is selected in the sidebar for upload and questions |
 
 ## How a question is answered
 
