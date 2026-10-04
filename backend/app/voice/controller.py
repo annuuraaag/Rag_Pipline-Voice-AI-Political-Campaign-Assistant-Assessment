@@ -20,6 +20,10 @@ This controller moves that work into the time the user is still talking:
                  reuse it: "hit" skips retrieval entirely, "stage1" runs only stage 2,
                  otherwise a normal retrieval ("miss"). Then the LLM streams.
 
+End of turn: every partial is also scored by the endpointer (app/voice/endpointing.py). The
+score goes to the client as an ``endpoint`` event (how long a silence should end the turn), and
+when the question already sounds complete, S2 starts at once instead of after ``stable_s``.
+
 Correctness: a speculative result is reused only for an identical cache key, and the key
 includes the corpus revision, so an upload in between invalidates it. Speculation only reads
 conversation state (``SessionStore.peek``); memory is committed once, on the final transcript.
@@ -45,6 +49,7 @@ from app.domain import MetadataFilter
 from app.observability.timing import StageTimer
 from app.rag.service import RAGService, merge_filters
 from app.retrieval.pipeline import RetrievalResult, Stage1
+from app.voice.endpointing import EndOfTurn, Endpointer
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +96,8 @@ class PartialTranscriptController:
     def __init__(self, rag: RAGService, campaign_id: str, session_id: str | None,
                  filters: MetadataFilter | None = None, revision: Callable[[], int] = lambda: 0,
                  emit: Emit | None = None, *, debounce_s: float = 0.25, stable_s: float = 0.5,
-                 min_words: int = 3, word_step: int = 3, cache_size: int = 16):
+                 min_words: int = 3, word_step: int = 3, cache_size: int = 16,
+                 endpointer: Endpointer | None = None):
         self.rag = rag
         self.campaign_id = campaign_id
         self.session_id = session_id
@@ -103,6 +109,8 @@ class PartialTranscriptController:
         self.min_words = min_words
         self.word_step = word_step
         self.cache_size = cache_size
+        self.endpointer = endpointer
+        self.end_of_turn: EndOfTurn | None = None  # assessment of the latest partial
         self.stats = VoiceStats()
         self._cache: OrderedDict[tuple, Speculation] = OrderedDict()
         self._inflight: dict[tuple, asyncio.Task] = {}   # stage-1 jobs
@@ -134,6 +142,13 @@ class PartialTranscriptController:
         filters = merge_filters(rw.filters, self.explicit).model_copy(update={"campaign_id": self.campaign_id})
         return rw, filters, self.key(rw.query, filters)
 
+    # ── end of turn ─────────────────────────────────────────────────────
+    def assess_turn(self, text: str) -> EndOfTurn | None:
+        """How finished the utterance sounds, and how long a silence should end it."""
+        if self.endpointer is None:
+            return None
+        return self.endpointer.assess(text, self._state())
+
     # ── S0 / S1: partial transcripts ────────────────────────────────────
     async def on_partial(self, text: str) -> None:
         text = text.strip()[:1000]
@@ -141,7 +156,13 @@ class PartialTranscriptController:
             return
         self._latest = text
         self.stats.partials += 1
-        self._restart_stability_timer()
+        self.end_of_turn = self.assess_turn(text)
+        if self.end_of_turn is not None:
+            await self._send(self.end_of_turn.as_event(text))
+        # A question that sounds finished will be final within a few hundred ms: refine (rerank + gate)
+        # now so it is ready by then, instead of after the usual stability wait.
+        complete = self.end_of_turn is not None and self.end_of_turn.turn == "complete"
+        self._restart_stability_timer(min(self.stable_s, 0.1) if complete else self.stable_s)
         words = word_count(text)
         if words < self.min_words:
             self._ignore(f"S0 short ({words} words)")
@@ -209,13 +230,13 @@ class PartialTranscriptController:
         return spec
 
     # ── S2: stable transcript → rerank + gate ahead of time ─────────────
-    def _restart_stability_timer(self) -> None:
+    def _restart_stability_timer(self, delay_s: float) -> None:
         if self._stable and not self._stable.done():
             self._stable.cancel()
-        self._stable = asyncio.create_task(self._refine_when_stable())
+        self._stable = asyncio.create_task(self._refine_when_stable(delay_s))
 
-    async def _refine_when_stable(self) -> None:
-        await asyncio.sleep(self.stable_s)
+    async def _refine_when_stable(self, delay_s: float) -> None:
+        await asyncio.sleep(delay_s)
         await self._guard(self.refine())
 
     async def speech_end(self) -> None:
@@ -288,6 +309,7 @@ class PartialTranscriptController:
         """After a final transcript: the next utterance starts from scratch (cache is kept)."""
         self.cancel_timers()
         self._latest = ""
+        self.end_of_turn = None
         self._last_words, self._last_signature, self._last_key = 0, None, None
 
     # ── helpers ─────────────────────────────────────────────────────────

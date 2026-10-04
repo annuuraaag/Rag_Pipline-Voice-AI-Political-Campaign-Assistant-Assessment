@@ -96,6 +96,13 @@ class Settings(BaseSettings):
     voice_stable_ms: int = 500     # S2: transcript unchanged this long → rerank ahead of the final
     voice_min_words: int = 3       # S0: shorter partials are ignored
     voice_word_step: int = 3       # S1: re-search after this many new words (or a new district/topic/entity)
+    # End-of-turn detection (app/voice/endpointing.py): how long a silence ends the turn, by how
+    # finished the transcript sounds. "unsure" is the old fixed timeout.
+    voice_adaptive_endpointing: bool = True
+    voice_endpoint_complete_ms: int = Field(default=300, ge=100, le=3000)
+    voice_endpoint_likely_ms: int = Field(default=550, ge=100, le=3000)
+    voice_endpoint_unsure_ms: int = Field(default=900, ge=100, le=5000)
+    voice_endpoint_incomplete_ms: int = Field(default=1600, ge=100, le=8000)
     # Server-side speech-to-text (/transcribe) for browsers without the Web Speech API.
     stt_model: str = ""            # default: whisper-large-v3-turbo (Groq) / whisper-1 (OpenAI)
     max_audio_mb: int = 10

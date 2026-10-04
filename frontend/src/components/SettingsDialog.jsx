@@ -53,7 +53,10 @@ export default function SettingsDialog({ open, onClose }) {
         <Field label={`Speaking rate · ${settings.rate.toFixed(2)}×`}>
           <input type="range" min="0.8" max="1.4" step="0.05" value={settings.rate} onChange={(e) => update({ rate: Number(e.target.value) })} />
         </Field>
-        <Field label={`End-of-question pause · ${settings.endSilenceMs} ms`} hint="Shorter answers faster; longer lets you pause mid-sentence.">
+        <Toggle checked={settings.smartEndpointing} onChange={(v) => update({ smartEndpointing: v })} label="Smart end-of-question detection"
+                description="Answers sooner when your question sounds finished, and waits longer when it trails off (“…for farmers in”, “um”)." />
+        <Field label={`End-of-question pause · ${settings.endSilenceMs} ms`}
+               hint={settings.smartEndpointing ? "Used when it can't tell whether you've finished. Shorter answers faster; longer lets you pause mid-sentence." : "Shorter answers faster; longer lets you pause mid-sentence."}>
           <input type="range" min="600" max="1600" step="100" value={settings.endSilenceMs} onChange={(e) => update({ endSilenceMs: Number(e.target.value) })} />
         </Field>
         <Toggle checked={settings.autoSpeak} onChange={(v) => update({ autoSpeak: v })} label="Speak answers aloud"

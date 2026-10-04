@@ -11,9 +11,11 @@ Client → server (JSON):
     {"type": "ping"}
 
 Server → client (JSON):
-    ready · started · speculative (stage S1|S2, sources) · retrieval · token · done · cancelled ·
-    pong · error. `retrieval`/`token`/`done` carry the client's `turn_id`; `done.voice` reports the
-    cache outcome, the retrieval time saved and final-transcript → first-token latency.
+    ready · started · endpoint · speculative (stage S1|S2, sources) · retrieval · token · done ·
+    cancelled · pong · error. `endpoint` follows every partial: how finished the utterance sounds
+    (complete | likely | unsure | incomplete) and the silence (`wait_ms`) that should end the turn.
+    `retrieval`/`token`/`done` carry the client's `turn_id`; `done.voice` reports the cache
+    outcome, the retrieval time saved and final-transcript → first-token latency.
 
 POST /transcribe — audio clip → text (Whisper), for browsers without the Web Speech API.
 """
@@ -34,6 +36,7 @@ from app.generation.llm.base import LLMError
 from app.ingestion.service import normalize_campaign
 from app.schemas import FilterIn
 from app.voice.controller import PartialTranscriptController
+from app.voice.endpointing import build_endpointer, endpointing_info
 
 router = APIRouter(tags=["voice"])
 logger = logging.getLogger(__name__)
@@ -68,7 +71,7 @@ class VoiceSession:
         self.ctrl = PartialTranscriptController(
             self.c.rag, campaign, session_id, filters, revision=lambda: self.c.ingestion.revision, emit=self.send,
             debounce_s=s.voice_debounce_ms / 1000, stable_s=s.voice_stable_ms / 1000,
-            min_words=s.voice_min_words, word_step=s.voice_word_step,
+            min_words=s.voice_min_words, word_step=s.voice_word_step, endpointer=build_endpointer(s),
         )
         return self.ctrl
 
@@ -133,6 +136,7 @@ async def voice_ws(ws: WebSocket) -> None:
         "reranker": c.retriever.reranker is not None, "transcribe": c.transcriber is not None,
         "speculation": {"debounce_ms": c.settings.voice_debounce_ms, "stable_ms": c.settings.voice_stable_ms,
                         "min_words": c.settings.voice_min_words},
+        "endpointing": endpointing_info(c.settings),
     })
     try:
         while True:

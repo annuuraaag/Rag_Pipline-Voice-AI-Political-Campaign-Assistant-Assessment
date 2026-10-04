@@ -17,6 +17,14 @@ import { VoiceSocket, voiceSocketUrl } from "./socket.js";
 const uid = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}${Math.random()}`).replace(/\W/g, "").slice(0, 10);
 const words = (t) => t.toLowerCase().match(/[a-z0-9]+/g) || [];
 
+/** Silence that ends the turn, from the server's end-of-turn verdict and the user's pause setting
+ *  (which stays the wait whenever the server is unsure, and the most a finished question waits). */
+export function endpointWait(e, userMs) {
+  if (e.turn === "complete" || e.turn === "likely") return Math.min(e.wait_ms, userMs);
+  if (e.turn === "incomplete") return Math.max(e.wait_ms, userMs);
+  return userMs;
+}
+
 /** True when `heard` is probably the assistant's own voice coming back through the mic. */
 export function isEcho(heard, spoken) {
   const w = words(heard);
@@ -34,7 +42,7 @@ export class VoiceAssistant {
     this.fallbackAsk = fallbackAsk;
     this.listeners = new Set();
     this.state = {
-      phase: "idle", interim: "", speculative: null, error: null, notice: null,
+      phase: "idle", interim: "", speculative: null, endpoint: null, error: null, notice: null,
       socket: "connecting", server: null,
     };
     this.turn = null;
@@ -87,7 +95,7 @@ export class VoiceAssistant {
       this._set({ error: "Voice input needs Chrome, Edge or Safari (or a server speech-to-text key). You can still type." });
       return;
     }
-    this._set({ error: null, notice: null, interim: "", speculative: null, phase: "listening" });
+    this._set({ error: null, notice: null, interim: "", speculative: null, endpoint: null, phase: "listening" });
     if (!(await this._ensureMic())) return;
     if (this.mode === "webspeech") this._startRecognizer();
     else this._record();
@@ -169,7 +177,7 @@ export class VoiceAssistant {
       endSilenceMs: s.endSilenceMs,
       onPartial: (t) => this.rec === rec && this._onPartial(t),
       onSpeechEnd: () => this.rec === rec && this.state.phase === "listening" && this.socket.send({ type: "speech_end" }),
-      onFinal: (t) => {
+      onFinal: (t, reason, waitedMs) => {
         if (this.rec !== rec) return;
         this.rec = null;
         if (this.state.phase !== "listening") {
@@ -177,7 +185,7 @@ export class VoiceAssistant {
           if (this.turn) this._listenForBargeIn();
           return;
         }
-        this._onUtterance(t);
+        this._onUtterance(t, reason === "silence" ? waitedMs : null);
       },
       onEnd: () => {
         if (this.rec !== rec) return;
@@ -231,12 +239,12 @@ export class VoiceAssistant {
     return w.slice(i).join(" ");
   }
 
-  _onUtterance(text) {
+  _onUtterance(text, endpointMs = null) {
     this._closeMic();
-    this._set({ interim: "" });
+    this._set({ interim: "", endpoint: null });
     const t = this._trimEcho(text);
     this.echoPool = null;
-    this._submit(tidyTranscript(t, true), { voice: true });
+    this._submit(tidyTranscript(t, true), { voice: true, endpointMs });
   }
 
   async _record() {
@@ -261,12 +269,13 @@ export class VoiceAssistant {
   }
 
   // ── turns ─────────────────────────────────────────────────────────
-  _submit(text, { voice }) {
+  _submit(text, { voice, endpointMs = null }) {
     const s = this.getSettings();
     const id = uid();
     this.turn = { id, tFinal: performance.now(), voice, speak: voice && s.autoSpeak && ttsSupported, text: "", done: false };
     this.dispatch({ type: "user", id: `${id}-q`, text, via: voice ? "voice" : "text" });
     this.dispatch({ type: "assistant", turnId: id, voice });
+    if (endpointMs != null) this.dispatch({ type: "voice_metric", turnId: id, patch: { endpoint_wait_ms: endpointMs } });
     if (this.turn.speak) this.speaker.begin(id, { voice: pickVoice(s.lang, s.voiceURI), rate: s.rate, lang: s.lang });
     this._set({ phase: "thinking", speculative: null, interim: "" });
 
@@ -308,6 +317,13 @@ export class VoiceAssistant {
     }
     if (e.type === "speculative") {
       if (this.state.phase === "listening") this._set({ speculative: e });
+      return;
+    }
+    if (e.type === "endpoint") {
+      if (this.state.phase !== "listening" || !this.rec) return;
+      const s = this.getSettings();
+      if (s.smartEndpointing !== false) this.rec.hint(e.text, endpointWait(e, s.endSilenceMs));
+      this._set({ endpoint: e });
       return;
     }
     const t = this.turn;

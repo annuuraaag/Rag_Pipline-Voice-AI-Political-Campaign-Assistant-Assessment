@@ -217,7 +217,8 @@ function AssistantMessage({ m, selected, onSelect, onCite, onReplay, onShowSourc
   const skipped = m.trace?.strategy?.startsWith("skipped");
   const cited = (m.citations || []).filter((c) => c.cited).length;
   const v = m.voice || {};
-  const firstWord = v.first_audio_ms ?? m.latency?.first_token;
+  const e2e = v.first_audio_ms !== undefined && v.endpoint_wait_ms != null ? v.endpoint_wait_ms + v.first_audio_ms : undefined;
+  const firstWord = e2e ?? v.first_audio_ms ?? m.latency?.first_token;
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(m.text.replace(/\s*\[S\d+\]/g, ""));
@@ -269,8 +270,9 @@ function AssistantMessage({ m, selected, onSelect, onCite, onReplay, onShowSourc
               </Badge>
             )}
             {firstWord !== undefined && done && (
-              <span className="meta-text" data-tip={v.first_audio_ms !== undefined
-                ? "From the end of your question to the first spoken word" : "Time to the first word of the answer"}>
+              <span className="meta-text" data-tip={e2e !== undefined
+                ? "From your last word to the first spoken word, including the pause that tells it you'd finished"
+                : v.first_audio_ms !== undefined ? "From the end of your question to the first spoken word" : "Time to the first word of the answer"}>
                 {v.first_audio_ms !== undefined ? <Volume2 size={12} aria-hidden /> : <AudioLines size={12} aria-hidden />}
                 {ms(firstWord)}
               </span>

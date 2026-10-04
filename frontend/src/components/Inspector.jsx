@@ -207,15 +207,22 @@ function Latency({ message }) {
   if (!l) return <EmptyState icon={Gauge} title="Measuring…" />;
   const rows = STAGES.filter(([k]) => l[k] !== undefined).map(([k, label]) => ({ k, label, v: l[k] }));
   const max = Math.max(...rows.map((r) => r.v), 1);
-  const hero = v.first_audio_ms ?? l.first_token;
+  // Last word → first audio: the wait to be sure the question was over, then the answer's first sound.
+  const e2e = v.first_audio_ms !== undefined && v.endpoint_wait_ms != null ? v.endpoint_wait_ms + v.first_audio_ms : undefined;
+  const hero = e2e ?? v.first_audio_ms ?? l.first_token;
+  const heroLabel = e2e !== undefined ? "Last word → first spoken word"
+    : v.first_audio_ms !== undefined ? "End of question → first spoken word" : "Time to first word";
   return (
     <div className="latency">
       <section className="panel hero-panel">
-        <div className="panel-label">{v.first_audio_ms !== undefined ? "End of question → first spoken word" : "Time to first word"}</div>
+        <div className="panel-label">{heroLabel}</div>
         <div className="hero-num">{ms(hero)}</div>
-        <div className="hero-sub">Total {ms(l.total)} · measured on this request</div>
+        <div className="hero-sub">
+          {e2e !== undefined ? `End of question detected after ${ms(v.endpoint_wait_ms)} · first audio ${ms(v.first_audio_ms)} later`
+            : `Total ${ms(l.total)} · measured on this request`}
+        </div>
       </section>
-      {(v.cache || v.final_to_first_token_ms !== undefined) && (
+      {(v.cache || v.final_to_first_token_ms !== undefined || v.endpoint_wait_ms !== undefined) && (
         <section className="panel">
           <div className="panel-label">Voice pipeline</div>
           <dl className="kv">
@@ -224,6 +231,7 @@ function Latency({ message }) {
               : v.cache === "stage1" ? <Badge tone="accent" icon={Zap}>Candidates reused</Badge>
               : v.cache === "miss" ? <Badge>Not reusable</Badge> : "–"}</dd>
             {v.retrieval_saved_ms > 0 && (<><dt>Retrieval time saved</dt><dd>{ms(v.retrieval_saved_ms)}</dd></>)}
+            {v.endpoint_wait_ms != null && (<><dt>Last word → end of question</dt><dd>{ms(v.endpoint_wait_ms)}</dd></>)}
             {v.final_to_first_token_ms != null && (<><dt>Final transcript → first token</dt><dd>{ms(v.final_to_first_token_ms)}</dd></>)}
             {v.first_audio_ms !== undefined && (<><dt>→ first spoken word</dt><dd>{ms(v.first_audio_ms)}</dd></>)}
             {v.partials !== undefined && (<><dt>Partial transcripts</dt><dd>{v.partials} received · {v.speculative_searches} searches · {v.speculative_refines} reranks</dd></>)}
