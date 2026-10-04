@@ -24,6 +24,7 @@ function update(m, a) {
       return {
         ...m, status: "done", text: p.answer, citations: p.citations, answerable: p.answerable,
         refusal_reason: p.refusal_reason, llm: p.llm, latency: p.latency_ms, conversation: p.conversation,
+        verification: p.verification,
         voice: { ...m.voice, ...(p.voice || {}), cache: p.cache ?? m.voice?.cache },
       };
     }

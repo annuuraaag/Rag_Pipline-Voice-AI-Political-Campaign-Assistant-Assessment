@@ -6,6 +6,14 @@ import { api } from "../api.js";
 import { Badge, Dot, EmptyState, IconButton } from "../components/ui.jsx";
 import { ms, titleCase } from "../lib/format.js";
 
+// "local/stt" status strings → one line; null when the server leaves speech to the browser.
+function serverSpeech(sp) {
+  const on = (x) => x && !/^(disabled|unavailable)/.test(x);
+  if (!sp || !(on(sp.stt) || on(sp.tts))) return null;
+  const parts = [on(sp.stt) && `recognition ${sp.stt}`, on(sp.tts) && `voice ${sp.tts}`].filter(Boolean);
+  return `Server speech: ${parts.join(" · ")}`;
+}
+
 function components(h) {
   const c = h?.components || {};
   return [
@@ -19,7 +27,8 @@ function components(h) {
     { key: "llm", icon: BrainCircuit, title: "Language model", ok: c.llm?.ok,
       lines: [`${c.llm?.provider || "–"} · ${c.llm?.model || "–"}`, c.llm?.note || c.llm?.model_check] },
     { key: "voice", icon: AudioLines, title: "Voice", ok: c.voice?.ok,
-      lines: ["WebSocket streaming + speculative search", c.voice?.server_transcription ? `Server speech-to-text: ${c.voice.server_transcription}` : "Speech-to-text in the browser"] },
+      lines: [`WebSocket streaming + speculative search${c.voice?.endpointing?.adaptive ? " + adaptive end of turn" : ""}`,
+        serverSpeech(c.voice?.server_speech) || (c.voice?.server_transcription ? `Server speech-to-text: ${c.voice.server_transcription}` : "Speech in the browser")] },
     { key: "ocr", icon: ScanText, title: "OCR", ok: c.ocr?.ok, warnOnly: true, lines: [c.ocr?.engine || "Disabled", c.ocr?.status] },
     { key: "documents", icon: Boxes, title: "Documents", ok: !(c.documents?.failed > 0), warnOnly: true,
       lines: [`${c.documents?.count ?? 0} indexed across ${Object.keys(c.documents?.campaigns || {}).length} campaign(s)`,
@@ -28,12 +37,16 @@ function components(h) {
 }
 
 const SHOWN = [
-  ["query_stream", "Typed questions (streaming)"], ["voice", "Voice turns"], ["query", "Typed questions (JSON)"], ["retrieve", "Retrieval only"],
+  ["query_stream", "Typed questions (streaming)"], ["voice", "Voice turns"], ["voice_audio", "Spoken answers (server voice)"],
+  ["query", "Typed questions (JSON)"], ["retrieve", "Retrieval only"],
 ];
-const KEY_STAGES = ["first_token", "retrieval_total", "rerank", "llm", "total", "final_to_first_token", "retrieval_saved"];
+const KEY_STAGES = ["first_token", "retrieval_total", "rerank", "llm", "verify", "total", "final_to_first_token", "retrieval_saved",
+  "last_voice_to_first_audio_ms", "endpoint_wait_ms", "final_to_first_audio_ms", "first_synth_ms"];
 const STAGE_LABEL = {
-  first_token: "First token", retrieval_total: "Retrieval", rerank: "Rerank", llm: "Language model", total: "Total",
-  final_to_first_token: "Final transcript → first token", retrieval_saved: "Retrieval saved by speculation",
+  first_token: "First token", retrieval_total: "Retrieval", rerank: "Rerank", llm: "Language model", verify: "Claim check",
+  total: "Total", final_to_first_token: "Final transcript → first token", retrieval_saved: "Retrieval saved by speculation",
+  last_voice_to_first_audio_ms: "Last word → first audio", endpoint_wait_ms: "End-of-turn wait",
+  final_to_first_audio_ms: "Final transcript → first audio", first_synth_ms: "First sentence synthesised",
 };
 
 export default function Insights({ health, refreshHealth }) {

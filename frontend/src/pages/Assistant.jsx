@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   ArrowUp, AudioLines, Briefcase, Check, CircleAlert, Copy, GraduationCap, HeartPulse, Info, Loader2, MapPin,
-  Mic, PanelRight, RotateCcw, Search, SlidersHorizontal, Sparkles, Sprout, Square, Volume2, Waves, X, Zap,
+  Mic, PanelRight, RotateCcw, Search, SlidersHorizontal, Sparkles, Sprout, Square, TriangleAlert, Volume2, Waves, X, Zap,
 } from "lucide-react";
 import VoiceOrb, { Waveform } from "../components/VoiceOrb.jsx";
 import Inspector from "../components/Inspector.jsx";
@@ -190,14 +190,60 @@ function UserMessage({ m }) {
   );
 }
 
+// Unverified claims, as ranges of the answer text. Claims arrive with their [S#] markers removed,
+// so the text is mapped the same way (markers out, no space before punctuation) to find them.
+function unverifiedRanges(text, verification) {
+  const bad = (verification?.claims || []).filter((c) => c.verdict === "unsupported");
+  if (!bad.length) return [];
+  let plain = "";
+  const map = [];
+  const stripped = text.replace(/\s*\[S\d+\]/g, (mk) => "\u0000".repeat(mk.length));
+  for (let i = 0; i < stripped.length; i++) {
+    if (stripped[i] === "\u0000") continue;
+    if (/\s/.test(stripped[i])) {
+      let j = i;
+      while (j < stripped.length && (/\s/.test(stripped[j]) || stripped[j] === "\u0000")) j++;
+      if (/[.,;:!?]/.test(stripped[j] || "")) { i = j - 1; continue; }
+    }
+    plain += stripped[i];
+    map.push(i);
+  }
+  return bad.flatMap((c) => {
+    const at = plain.indexOf(c.text);
+    if (at < 0) return [];
+    return [{ start: map[at], end: map[at + c.text.length - 1] + 1, tip: `Not found in the sources: ${c.issues.join("; ")}` }];
+  });
+}
+
 function AnswerText({ m, onCite }) {
-  const parts = m.text.split(/(\[S\d+\])/g);
+  const ranges = m.status === "done" ? unverifiedRanges(m.text, m.verification) : [];
+  const inRange = (i) => ranges.find((r) => r.start <= i && i < r.end);
+  const pieces = [];
+  const re = /\[S(\d+)\]/g;
+  let last = 0;
+  const pushText = (from, to) => {
+    for (let i = from; i < to;) {
+      const r = inRange(i);
+      const next = r ? Math.min(r.end, to) : Math.min(to, ...ranges.filter((x) => x.start > i).map((x) => x.start));
+      pieces.push({ text: m.text.slice(i, next), flag: r });
+      i = next;
+    }
+  };
+  for (let hit; (hit = re.exec(m.text));) {
+    pushText(last, hit.index);
+    pieces.push({ cite: Number(hit[1]) });
+    last = hit.index + hit[0].length;
+  }
+  pushText(last, m.text.length);
   return (
     <div className="answer">
-      {parts.map((p, i) => {
-        const hit = /^\[S(\d+)\]$/.exec(p);
-        if (!hit) return <span key={i}>{p}</span>;
-        const n = Number(hit[1]);
+      {pieces.map((p, i) => {
+        if (p.cite === undefined) {
+          return p.flag
+            ? <mark key={i} className="claim-flag" data-tip={p.flag.tip} tabIndex={0} aria-label={`${p.text} (${p.flag.tip})`}>{p.text}</mark>
+            : <span key={i}>{p.text}</span>;
+        }
+        const n = p.cite;
         const src = sourceFor(m, n);
         const label = src ? `${src.document_name}${pages(src) ? ` · ${pages(src)}` : ""}${src.section ? ` · ${src.section}` : ""}` : `Source ${n}`;
         return (
@@ -216,8 +262,11 @@ function AssistantMessage({ m, selected, onSelect, onCite, onReplay, onShowSourc
   const refused = done && m.answerable === false && m.refusal_reason;
   const skipped = m.trace?.strategy?.startsWith("skipped");
   const cited = (m.citations || []).filter((c) => c.cited).length;
+  const vf = m.verification;
+  const checked = vf ? vf.supported + vf.corrected + vf.unsupported : 0;
   const v = m.voice || {};
-  const firstWord = v.first_audio_ms ?? m.latency?.first_token;
+  const e2e = v.first_audio_ms !== undefined && v.endpoint_wait_ms != null ? v.endpoint_wait_ms + v.first_audio_ms : undefined;
+  const firstWord = e2e ?? v.first_audio_ms ?? m.latency?.first_token;
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(m.text.replace(/\s*\[S\d+\]/g, ""));
@@ -257,11 +306,17 @@ function AssistantMessage({ m, selected, onSelect, onCite, onReplay, onShowSourc
         {(done || m.status === "interrupted") && (
           <div className="msg-meta">
             {m.status === "interrupted" && <Badge tone="warn" icon={Square}>Interrupted</Badge>}
-            {done && !refused && !skipped && cited > 0 && (
-              <button className="badge badge-ok badge-btn" onClick={(e) => { e.stopPropagation(); onShowSources(); }}>
-                <Check size={12} aria-hidden /> Grounded · {cited} source{cited === 1 ? "" : "s"}
+            {done && !refused && !skipped && cited > 0 && (vf?.unsupported ? (
+              <button className="badge badge-warn badge-btn" onClick={(e) => { e.stopPropagation(); onShowSources(); }}
+                      data-tip="Underlined sentences could not be matched to the passage they cite">
+                <TriangleAlert size={12} aria-hidden /> {vf.unsupported} of {checked} claim{checked === 1 ? "" : "s"} not found in sources
               </button>
-            )}
+            ) : (
+              <button className="badge badge-ok badge-btn" onClick={(e) => { e.stopPropagation(); onShowSources(); }}
+                      data-tip={vf ? `Each claim was checked against the passage it cites${vf.corrected ? `; ${vf.corrected} citation${vf.corrected === 1 ? " was" : "s were"} corrected` : ""}` : undefined}>
+                <Check size={12} aria-hidden /> {vf && checked ? `Verified · ${checked} claim${checked === 1 ? "" : "s"}` : "Grounded"} · {cited} source{cited === 1 ? "" : "s"}
+              </button>
+            ))}
             {(v.cache === "hit" || v.cache === "stage1") && v.retrieval_saved_ms > 0 && (
               <Badge tone="accent" icon={Zap}
                      data-tip="Retrieval ran while you were still speaking, so the answer started sooner">
@@ -269,8 +324,9 @@ function AssistantMessage({ m, selected, onSelect, onCite, onReplay, onShowSourc
               </Badge>
             )}
             {firstWord !== undefined && done && (
-              <span className="meta-text" data-tip={v.first_audio_ms !== undefined
-                ? "From the end of your question to the first spoken word" : "Time to the first word of the answer"}>
+              <span className="meta-text" data-tip={e2e !== undefined
+                ? "From your last word to the first spoken word, including the pause that tells it you'd finished"
+                : v.first_audio_ms !== undefined ? "From the end of your question to the first spoken word" : "Time to the first word of the answer"}>
                 {v.first_audio_ms !== undefined ? <Volume2 size={12} aria-hidden /> : <AudioLines size={12} aria-hidden />}
                 {ms(firstWord)}
               </span>

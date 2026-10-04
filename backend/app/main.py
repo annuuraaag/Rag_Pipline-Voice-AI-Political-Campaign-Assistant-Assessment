@@ -13,6 +13,8 @@ from app.config import Settings, get_settings
 from app.container import Container, build_container, seed_sample_data
 from app.domain import MetadataFilter
 from app.observability.logging import configure_logging
+from app.voice.stt import warm_up as stt_warm_up
+from app.voice.tts import warm_up as tts_warm_up
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +42,8 @@ def create_app(settings: Settings | None = None, container: Container | None = N
         c.retriever.retrieve("warm up", MetadataFilter(campaign_id=settings.default_campaign_id))
         if c.ocr:
             await asyncio.to_thread(c.ocr.self_test)
+        await asyncio.to_thread(stt_warm_up, c.stt)
+        await asyncio.to_thread(tts_warm_up, c.tts)
         # Providers retire models; check now so the first user question doesn't pay for (or fail on) it.
         verify = getattr(c.llm, "verify_model", None)
         if verify:
@@ -50,7 +54,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
         logger.info("Ready: %s, %d chunks, OCR=%s, LLM=%s/%s", c.registry.campaigns(), c.store.count(),
                     "on" if c.ocr and c.ocr.available else "off", c.llm.name, c.llm.model)
         yield
-        for client in (c.llm, c.transcriber):
+        for client in (c.llm, c.transcriber, c.tts):
             aclose = getattr(client, "aclose", None)
             if aclose:
                 await aclose()

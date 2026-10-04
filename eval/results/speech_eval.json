@@ -1,0 +1,1548 @@
+{
+  "config": {
+    "llm": "extractive/extractive-fallback (offline fallback: no API key)",
+    "retrieval": "hybrid(dense+bm25, rrf)",
+    "gate": "dense",
+    "embedder": "hashing-test-embedder (TEST STAND-IN: retrieval not representative)",
+    "stt": "local/stt",
+    "tts": "local/tts #0",
+    "vad": "silero"
+  },
+  "machine": "sandbox VM (Linux x86_64, 4 shared vCPUs)",
+  "offline": {
+    "wer_raw": 0.177,
+    "wer_corrected": 0.152,
+    "district_raw": 0.0,
+    "district_corrected": 0.308
+  },
+  "adaptive": {
+    "rows": [
+      {
+        "id": "q01",
+        "query": "How much coverage does the SCA Health Shield provide?",
+        "transcript": "How much coverage does the SEA Health shield provide?",
+        "server_endpoint_ms": 560,
+        "turn": "8ca07eec",
+        "server": {
+          "final_to_first_audio_ms": 184.8,
+          "first_synth_ms": 171.2,
+          "last_voice_to_first_audio_ms": 745.6,
+          "stt_final_ms": 0.3
+        },
+        "barge_transcript": "who is eligible for the Pratybeth scholars",
+        "barge_speech_start_s": 6.760654477000026,
+        "last_word_to_final_ms": 519.4,
+        "final_to_first_token_ms": 9.8,
+        "final_to_first_audio_ms": 183.9,
+        "last_word_to_first_audio_ms": 703.3,
+        "barge_in_detect_ms": 931.7,
+        "wer_errors": 1,
+        "wer_ref": 9,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q02",
+        "query": "How many teacher posts will be filled?",
+        "transcript": "How many teacher posts will be filled",
+        "server_endpoint_ms": 560,
+        "turn": "1280bf28",
+        "server": {
+          "final_to_first_audio_ms": 160.1,
+          "first_synth_ms": 154.2,
+          "last_voice_to_first_audio_ms": 720.8,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 609.3,
+        "final_to_first_token_ms": 3.4,
+        "final_to_first_audio_ms": 160.4,
+        "last_word_to_first_audio_ms": 769.7,
+        "wer_errors": 0,
+        "wer_ref": 7,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q03",
+        "query": "What is the lean season allowance for fishermen?",
+        "transcript": "What is the lean season allows for fishermen",
+        "server_endpoint_ms": 300,
+        "turn": "44a03705",
+        "server": {
+          "final_to_first_audio_ms": 213.4,
+          "first_synth_ms": 204.3,
+          "last_voice_to_first_audio_ms": 514.2,
+          "stt_final_ms": 0.0
+        },
+        "last_word_to_final_ms": 324.8,
+        "final_to_first_token_ms": 8.0,
+        "final_to_first_audio_ms": 214.6,
+        "last_word_to_first_audio_ms": 539.4,
+        "wer_errors": 1,
+        "wer_ref": 8,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q04",
+        "query": "What healthcare facilities are planned in Guntur?",
+        "transcript": "What healthcare facilities are planned in Gun",
+        "server_endpoint_ms": 580,
+        "turn": "b762cefe",
+        "server": {
+          "final_to_first_audio_ms": 224.0,
+          "first_synth_ms": 218.8,
+          "last_voice_to_first_audio_ms": 806.1,
+          "stt_final_ms": 0.1
+        },
+        "barge_transcript": "who is eligible for the Pratybeth scholars",
+        "barge_speech_start_s": 6.481498153000212,
+        "last_word_to_final_ms": 611.4,
+        "final_to_first_token_ms": 3.6,
+        "final_to_first_audio_ms": 222.9,
+        "last_word_to_first_audio_ms": 834.3,
+        "barge_in_detect_ms": 945.0,
+        "wer_errors": 1,
+        "wer_ref": 7,
+        "districts": [
+          "guntur"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q05",
+        "query": "What will be done about floods in Vijayawada?",
+        "transcript": "What will be done about floods and Vigial water",
+        "server_endpoint_ms": 320,
+        "turn": "17191a25",
+        "server": {
+          "final_to_first_audio_ms": 275.2,
+          "first_synth_ms": 256.1,
+          "last_voice_to_first_audio_ms": 599.6,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 496.0,
+        "final_to_first_token_ms": 2.4,
+        "final_to_first_audio_ms": 263.7,
+        "last_word_to_first_audio_ms": 759.7,
+        "wer_errors": 3,
+        "wer_ref": 8,
+        "districts": [
+          "vijayawada"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q06",
+        "query": "How will air pollution be monitored in Visakhapatnam?",
+        "transcript": "How will air pollution be monitored in Visakhapatnam?",
+        "server_endpoint_ms": 300,
+        "turn": "8d779254",
+        "server": {
+          "final_to_first_audio_ms": 238.3,
+          "first_synth_ms": 224.0,
+          "last_voice_to_first_audio_ms": 539.7,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 382.4,
+        "final_to_first_token_ms": 26.3,
+        "final_to_first_audio_ms": 239.6,
+        "last_word_to_first_audio_ms": 622.0,
+        "wer_errors": 0,
+        "wer_ref": 8,
+        "districts": [
+          "visakhapatnam"
+        ],
+        "districts_heard": [
+          "visakhapatnam"
+        ]
+      },
+      {
+        "id": "q07",
+        "query": "What are the education plans for Vijayawada?",
+        "transcript": "What are the education plans for Vegawat",
+        "server_endpoint_ms": 580,
+        "turn": "af81d335",
+        "server": {
+          "final_to_first_audio_ms": 150.2,
+          "first_synth_ms": 146.6,
+          "last_voice_to_first_audio_ms": 730.9,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 558.2,
+        "final_to_first_token_ms": 5.0,
+        "final_to_first_audio_ms": 150.6,
+        "last_word_to_first_audio_ms": 708.8,
+        "wer_errors": 1,
+        "wer_ref": 7,
+        "districts": [
+          "vijayawada"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q08",
+        "query": "What healthcare initiatives does the candidate propose for Vijayawada?",
+        "transcript": "What healthcare initiatives does the candidate propose for Vidya Owata",
+        "server_endpoint_ms": 340,
+        "turn": "7851dc44",
+        "server": {
+          "final_to_first_audio_ms": 201.4,
+          "first_synth_ms": 180.0,
+          "last_voice_to_first_audio_ms": 543.7,
+          "stt_final_ms": 0.1
+        },
+        "barge_transcript": "who is eligible for the Pratybeth scholars",
+        "barge_speech_start_s": 7.6408997160000585,
+        "last_word_to_final_ms": 463.6,
+        "final_to_first_token_ms": 18.0,
+        "final_to_first_audio_ms": 203.8,
+        "last_word_to_first_audio_ms": 667.4,
+        "barge_in_detect_ms": 926.0,
+        "wer_errors": 2,
+        "wer_ref": 9,
+        "districts": [
+          "vijayawada"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q09",
+        "query": "How many jobs will the flagship projects create in each district?",
+        "transcript": "How many jobs will the flyco projects create in each district",
+        "server_endpoint_ms": 320,
+        "turn": "9db142a9",
+        "server": {
+          "final_to_first_audio_ms": 207.2,
+          "first_synth_ms": 186.8,
+          "last_voice_to_first_audio_ms": 532.6,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 321.0,
+        "final_to_first_token_ms": 26.8,
+        "final_to_first_audio_ms": 213.0,
+        "last_word_to_first_audio_ms": 534.1,
+        "wer_errors": 1,
+        "wer_ref": 11,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q10",
+        "query": "What support is offered to chilli farmers?",
+        "transcript": "What support is offered to Chile farmers",
+        "server_endpoint_ms": 320,
+        "turn": "38ab899f",
+        "server": {
+          "final_to_first_audio_ms": 184.4,
+          "first_synth_ms": 165.2,
+          "last_voice_to_first_audio_ms": 505.7,
+          "stt_final_ms": 0.1
+        },
+        "barge_transcript": "who is eligible for the Pratybeth scholars",
+        "barge_speech_start_s": 6.400559631000215,
+        "last_word_to_final_ms": 437.2,
+        "final_to_first_token_ms": 17.2,
+        "final_to_first_audio_ms": 184.5,
+        "last_word_to_first_audio_ms": 621.7,
+        "barge_in_detect_ms": 942.3,
+        "wer_errors": 1,
+        "wer_ref": 7,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q11",
+        "query": "Compare the new hospital plans for Guntur and Visakhapatnam.",
+        "transcript": "Compare the new hospital plans for Guntur and Visakha put them",
+        "server_endpoint_ms": 580,
+        "turn": "4e935fb3",
+        "server": {
+          "final_to_first_audio_ms": 153.9,
+          "first_synth_ms": 144.1,
+          "last_voice_to_first_audio_ms": 734.7,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 580.7,
+        "final_to_first_token_ms": 26.9,
+        "final_to_first_audio_ms": 154.3,
+        "last_word_to_first_audio_ms": 735.0,
+        "wer_errors": 3,
+        "wer_ref": 9,
+        "districts": [
+          "guntur",
+          "visakhapatnam"
+        ],
+        "districts_heard": [
+          "guntur",
+          "visakhapatnam"
+        ]
+      },
+      {
+        "id": "q12",
+        "query": "What healthcare schemes are available?",
+        "transcript": "When healthcare schemes are available",
+        "server_endpoint_ms": 560,
+        "turn": "cdde4d9f",
+        "server": {
+          "final_to_first_audio_ms": 176.7,
+          "first_synth_ms": 160.4,
+          "last_voice_to_first_audio_ms": 738.0,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 658.2,
+        "final_to_first_token_ms": 9.4,
+        "final_to_first_audio_ms": 178.1,
+        "last_word_to_first_audio_ms": 836.4,
+        "wer_errors": 1,
+        "wer_ref": 5,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q13",
+        "query": "What about education?",
+        "transcript": "What about the education?",
+        "server_endpoint_ms": 320,
+        "turn": "6bfec3c4",
+        "server": {
+          "final_to_first_audio_ms": 191.7,
+          "first_synth_ms": 174.9,
+          "last_voice_to_first_audio_ms": 512.5,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 325.1,
+        "final_to_first_token_ms": 15.0,
+        "final_to_first_audio_ms": 192.7,
+        "last_word_to_first_audio_ms": 517.8,
+        "wer_errors": 1,
+        "wer_ref": 3,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q14",
+        "query": "What is planned for farmers there?",
+        "transcript": "What is planned for farmers there",
+        "server_endpoint_ms": 320,
+        "turn": "134579f7",
+        "server": {
+          "final_to_first_audio_ms": 245.3,
+          "first_synth_ms": 228.7,
+          "last_voice_to_first_audio_ms": 570.6,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 389.4,
+        "final_to_first_token_ms": 20.2,
+        "final_to_first_audio_ms": 247.2,
+        "last_word_to_first_audio_ms": 636.7,
+        "wer_errors": 0,
+        "wer_ref": 6,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q15",
+        "query": "Who is eligible for it?",
+        "transcript": "Who's eligible for it?",
+        "server_endpoint_ms": 300,
+        "turn": "4c8e1717",
+        "server": {
+          "final_to_first_audio_ms": 183.9,
+          "first_synth_ms": 166.6,
+          "last_voice_to_first_audio_ms": 484.6,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 337.8,
+        "final_to_first_token_ms": 19.3,
+        "final_to_first_audio_ms": 184.9,
+        "last_word_to_first_audio_ms": 522.6,
+        "wer_errors": 2,
+        "wer_ref": 5,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q16",
+        "query": "uh so what are you guys doing for, um, farmers near Guntur",
+        "transcript": "So what are you guys doing for farmers near gunster",
+        "server_endpoint_ms": 560,
+        "turn": "fbd4456c",
+        "server": {
+          "final_to_first_audio_ms": 201.9,
+          "first_synth_ms": 191.4,
+          "last_voice_to_first_audio_ms": 762.8,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 599.1,
+        "final_to_first_token_ms": 8.1,
+        "final_to_first_audio_ms": 201.2,
+        "last_word_to_first_audio_ms": 800.2,
+        "wer_errors": 3,
+        "wer_ref": 12,
+        "districts": [
+          "guntur"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q17",
+        "query": "vizag IT corridor how many jobs",
+        "transcript": "They say corridor how many job",
+        "server_endpoint_ms": 580,
+        "turn": "e4dd98bf",
+        "server": {
+          "final_to_first_audio_ms": 149.2,
+          "first_synth_ms": 143.7,
+          "last_voice_to_first_audio_ms": 729.8,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 590.7,
+        "final_to_first_token_ms": 2.1,
+        "final_to_first_audio_ms": 148.4,
+        "last_word_to_first_audio_ms": 739.1,
+        "wer_errors": 3,
+        "wer_ref": 6,
+        "districts": [
+          "visakhapatnam"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q18",
+        "query": "I live in bezawada, any new hospitals coming up",
+        "transcript": "I live in this water",
+        "server_endpoint_ms": 300,
+        "turn": "e2584170",
+        "timeout": true,
+        "last_word_to_final_ms": -1281.9,
+        "final_to_first_token_ms": 6.5,
+        "final_to_first_audio_ms": 213.3,
+        "last_word_to_first_audio_ms": -1068.6,
+        "wer_errors": 6,
+        "wer_ref": 9,
+        "districts": [
+          "vijayawada"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q19",
+        "query": "Udayam Breakfast",
+        "transcript": "Yudayam breakfast",
+        "server_endpoint_ms": 900,
+        "turn": "9097002d",
+        "server": {
+          "final_to_first_audio_ms": 203.8,
+          "first_synth_ms": 191.6,
+          "last_voice_to_first_audio_ms": 1104.4,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 954.2,
+        "final_to_first_token_ms": 9.8,
+        "final_to_first_audio_ms": 204.5,
+        "last_word_to_first_audio_ms": 1158.7,
+        "wer_errors": 1,
+        "wer_ref": 2,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q20",
+        "query": "Matru Poshana kit",
+        "transcript": "Matru Poshana Kit",
+        "server_endpoint_ms": 560,
+        "turn": "16f1d1f1",
+        "server": {
+          "final_to_first_audio_ms": 175.7,
+          "first_synth_ms": 168.6,
+          "last_voice_to_first_audio_ms": 736.6,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 592.4,
+        "final_to_first_token_ms": 4.5,
+        "final_to_first_audio_ms": 175.8,
+        "last_word_to_first_audio_ms": 768.2,
+        "wer_errors": 0,
+        "wer_ref": 3,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q21",
+        "query": "Kisan Price Guarantee Fund",
+        "transcript": "Kisan Price Guarantee Fund",
+        "server_endpoint_ms": 300,
+        "turn": "fd807318",
+        "server": {
+          "final_to_first_audio_ms": 145.9,
+          "first_synth_ms": 137.7,
+          "last_voice_to_first_audio_ms": 446.5,
+          "stt_final_ms": 0.0
+        },
+        "last_word_to_final_ms": 252.8,
+        "final_to_first_token_ms": 10.6,
+        "final_to_first_audio_ms": 146.2,
+        "last_word_to_first_audio_ms": 399.1,
+        "wer_errors": 0,
+        "wer_ref": 4,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q22",
+        "query": "Where is the Vijayawada campaign office?",
+        "transcript": "Where's the Vijoada campaign office",
+        "server_endpoint_ms": 560,
+        "turn": "41ee4bc4",
+        "server": {
+          "final_to_first_audio_ms": 248.3,
+          "first_synth_ms": 234.2,
+          "last_voice_to_first_audio_ms": 809.9,
+          "stt_final_ms": 0.1
+        },
+        "barge_transcript": "who is eligible for the Pratybeth scholars",
+        "barge_speech_start_s": 6.040667583999857,
+        "last_word_to_final_ms": 717.3,
+        "final_to_first_token_ms": 13.0,
+        "final_to_first_audio_ms": 250.0,
+        "last_word_to_first_audio_ms": 967.3,
+        "barge_in_detect_ms": 920.7,
+        "wer_errors": 3,
+        "wer_ref": 6,
+        "districts": [
+          "vijayawada"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q23",
+        "query": "Which page of the manifesto talks about flood protection?",
+        "transcript": "which page of the manifesto talks about flood protection",
+        "server_endpoint_ms": 560,
+        "turn": "d5c0dba7",
+        "server": {
+          "final_to_first_audio_ms": 198.1,
+          "first_synth_ms": 187.2,
+          "last_voice_to_first_audio_ms": 758.9,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 622.1,
+        "final_to_first_token_ms": 8.1,
+        "final_to_first_audio_ms": 197.3,
+        "last_word_to_first_audio_ms": 819.4,
+        "wer_errors": 0,
+        "wer_ref": 9,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q24",
+        "query": "Who is the candidate for Vijayawada Central and what is her background?",
+        "transcript": "Who is the candidate for Vidiwata Central and what is her background",
+        "server_endpoint_ms": 560,
+        "turn": "f2f87cc3",
+        "server": {
+          "final_to_first_audio_ms": 186.6,
+          "first_synth_ms": 174.3,
+          "last_voice_to_first_audio_ms": 747.3,
+          "stt_final_ms": 0.2
+        },
+        "last_word_to_final_ms": 514.6,
+        "final_to_first_token_ms": 13.5,
+        "final_to_first_audio_ms": 186.9,
+        "last_word_to_first_audio_ms": 701.5,
+        "wer_errors": 1,
+        "wer_ref": 12,
+        "districts": [
+          "vijayawada"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q25",
+        "query": "What is the campaign's policy on lunar mining?",
+        "transcript": "What is the campaign's policy on lunar mi",
+        "server_endpoint_ms": 560,
+        "turn": "eab3304f",
+        "server": {
+          "final_to_first_audio_ms": 159.4,
+          "first_synth_ms": 151.4,
+          "last_voice_to_first_audio_ms": 720.2,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 512.1,
+        "final_to_first_token_ms": 2.3,
+        "final_to_first_audio_ms": 157.1,
+        "last_word_to_first_audio_ms": 669.2,
+        "wer_errors": 1,
+        "wer_ref": 8,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q26",
+        "query": "What is the alliance's position on building cricket stadiums?",
+        "transcript": "What is the alliance's position on billing credit stadiums",
+        "server_endpoint_ms": 580,
+        "turn": "f9a81cf6",
+        "server": {
+          "final_to_first_audio_ms": 250.6,
+          "first_synth_ms": 236.8,
+          "last_voice_to_first_audio_ms": 831.4,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 606.9,
+        "final_to_first_token_ms": 16.7,
+        "final_to_first_audio_ms": 249.9,
+        "last_word_to_first_audio_ms": 856.8,
+        "wer_errors": 2,
+        "wer_ref": 9,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q27",
+        "query": "What is the defence policy on the China border?",
+        "transcript": "What is the defense policy on the China border?",
+        "server_endpoint_ms": 560,
+        "turn": "5a58145f",
+        "server": {
+          "final_to_first_audio_ms": 381.8,
+          "first_synth_ms": 363.7,
+          "last_voice_to_first_audio_ms": 942.7,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 533.8,
+        "final_to_first_token_ms": 8.7,
+        "final_to_first_audio_ms": 380.0,
+        "last_word_to_first_audio_ms": 913.8,
+        "wer_errors": 1,
+        "wer_ref": 9,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q28",
+        "query": "Who won the last election in Kurnool?",
+        "transcript": "Who won the last election in Colonel",
+        "server_endpoint_ms": 580,
+        "turn": "5b881382",
+        "server": {
+          "final_to_first_audio_ms": 188.8,
+          "first_synth_ms": 179.7,
+          "last_voice_to_first_audio_ms": 769.3,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 604.0,
+        "final_to_first_token_ms": 6.8,
+        "final_to_first_audio_ms": 189.0,
+        "last_word_to_first_audio_ms": 793.1,
+        "wer_errors": 1,
+        "wer_ref": 7,
+        "districts": [
+          "kurnool"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q29",
+        "query": "What is the price of petrol today?",
+        "transcript": "What is the price of petrol today?",
+        "server_endpoint_ms": 580,
+        "turn": "c1cb62c2",
+        "server": {
+          "final_to_first_audio_ms": 176.1,
+          "first_synth_ms": 170.8,
+          "last_voice_to_first_audio_ms": 756.8,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 621.1,
+        "final_to_first_token_ms": 3.3,
+        "final_to_first_audio_ms": 176.1,
+        "last_word_to_first_audio_ms": 797.2,
+        "wer_errors": 0,
+        "wer_ref": 7,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q30",
+        "query": "Is the Health Shield free?",
+        "transcript": "Is the health shield free from",
+        "server_endpoint_ms": 1600,
+        "turn": "7b00ab31",
+        "server": {
+          "final_to_first_audio_ms": 199.3,
+          "first_synth_ms": 192.5,
+          "last_voice_to_first_audio_ms": 1800.1,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 1619.7,
+        "final_to_first_token_ms": 2.8,
+        "final_to_first_audio_ms": 197.8,
+        "last_word_to_first_audio_ms": 1817.5,
+        "wer_errors": 1,
+        "wer_ref": 5,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q31",
+        "query": "What is the policy on lunar mining?",
+        "transcript": "What is the policy on lunar mining",
+        "server_endpoint_ms": 580,
+        "turn": "8f39c92f",
+        "server": {
+          "final_to_first_audio_ms": 502.3,
+          "first_synth_ms": 489.0,
+          "last_voice_to_first_audio_ms": 1083.1,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 624.8,
+        "final_to_first_token_ms": 4.5,
+        "final_to_first_audio_ms": 502.7,
+        "last_word_to_first_audio_ms": 1127.5,
+        "wer_errors": 0,
+        "wer_ref": 7,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q32",
+        "query": "Which cricket team does the candidate support?",
+        "transcript": "which Cricket teamed as the candidate support",
+        "server_endpoint_ms": 560,
+        "turn": "b844cbcc",
+        "server": {
+          "final_to_first_audio_ms": 226.3,
+          "first_synth_ms": 221.6,
+          "last_voice_to_first_audio_ms": 787.1,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 648.1,
+        "final_to_first_token_ms": 4.1,
+        "final_to_first_audio_ms": 225.2,
+        "last_word_to_first_audio_ms": 873.2,
+        "wer_errors": 2,
+        "wer_ref": 7,
+        "districts": [],
+        "districts_heard": []
+      }
+    ],
+    "summary": {
+      "questions": 32,
+      "recognised": 32,
+      "missed": [],
+      "wer": 0.186,
+      "district_recall": 0.231,
+      "server_endpoint_ms": {
+        "n": 32,
+        "p50": 560.0,
+        "p90": 580.0,
+        "mean": 523.1,
+        "max": 1600
+      },
+      "last_word_to_final_ms": {
+        "n": 32,
+        "p50": 569.4,
+        "p90": 657.2,
+        "mean": 510.8,
+        "max": 1619.7
+      },
+      "final_to_first_token_ms": {
+        "n": 32,
+        "p50": 8.4,
+        "p90": 20.1,
+        "mean": 10.5,
+        "max": 26.9
+      },
+      "final_to_first_audio_ms": {
+        "n": 32,
+        "p50": 197.6,
+        "p90": 250.0,
+        "mean": 212.4,
+        "max": 502.7
+      },
+      "last_word_to_first_audio_ms": {
+        "n": 32,
+        "p50": 749.4,
+        "p90": 962.0,
+        "mean": 723.2,
+        "max": 1817.5
+      },
+      "first_synth_ms": {
+        "n": 31,
+        "p50": 180.0,
+        "p90": 236.8,
+        "mean": 200.5,
+        "max": 489.0
+      },
+      "barge_in_detect_ms": {
+        "n": 5,
+        "p50": 931.7,
+        "p90": 943.9,
+        "mean": 933.1,
+        "max": 945.0
+      },
+      "barge_in_caught": "5/5"
+    }
+  },
+  "fixed": {
+    "rows": [
+      {
+        "id": "q01",
+        "query": "How much coverage does the SCA Health Shield provide?",
+        "transcript": "How much coverage does the SEA Health shield provide?",
+        "server_endpoint_ms": 920,
+        "turn": "7c2a4298",
+        "server": {
+          "final_to_first_audio_ms": 168.6,
+          "first_synth_ms": 161.1,
+          "last_voice_to_first_audio_ms": 1089.5,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 879.7,
+        "final_to_first_token_ms": 2.7,
+        "final_to_first_audio_ms": 166.9,
+        "last_word_to_first_audio_ms": 1046.6,
+        "wer_errors": 1,
+        "wer_ref": 9,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q02",
+        "query": "How many teacher posts will be filled?",
+        "transcript": "How many teacher posts will be filled",
+        "server_endpoint_ms": 920,
+        "turn": "a43ae5ee",
+        "server": {
+          "final_to_first_audio_ms": 203.9,
+          "first_synth_ms": 200.7,
+          "last_voice_to_first_audio_ms": 1124.6,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 963.2,
+        "final_to_first_token_ms": 5.0,
+        "final_to_first_audio_ms": 203.4,
+        "last_word_to_first_audio_ms": 1166.6,
+        "wer_errors": 0,
+        "wer_ref": 7,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q03",
+        "query": "What is the lean season allowance for fishermen?",
+        "transcript": "What is the lean season allows for fishermen",
+        "server_endpoint_ms": 900,
+        "turn": "69ca6f1d",
+        "server": {
+          "final_to_first_audio_ms": 187.5,
+          "first_synth_ms": 184.3,
+          "last_voice_to_first_audio_ms": 1088.2,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 921.6,
+        "final_to_first_token_ms": 4.6,
+        "final_to_first_audio_ms": 187.1,
+        "last_word_to_first_audio_ms": 1108.7,
+        "wer_errors": 1,
+        "wer_ref": 8,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q04",
+        "query": "What healthcare facilities are planned in Guntur?",
+        "transcript": "What healthcare facilities are planned in Gun",
+        "server_endpoint_ms": 900,
+        "turn": "ab7f7dad",
+        "server": {
+          "final_to_first_audio_ms": 170.4,
+          "first_synth_ms": 165.6,
+          "last_voice_to_first_audio_ms": 1071.2,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 927.2,
+        "final_to_first_token_ms": 2.1,
+        "final_to_first_audio_ms": 169.8,
+        "last_word_to_first_audio_ms": 1097.1,
+        "wer_errors": 1,
+        "wer_ref": 7,
+        "districts": [
+          "guntur"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q05",
+        "query": "What will be done about floods in Vijayawada?",
+        "transcript": "What will be done about floods and Vigial water",
+        "server_endpoint_ms": 920,
+        "turn": "07405d3e",
+        "server": {
+          "final_to_first_audio_ms": 181.5,
+          "first_synth_ms": 175.9,
+          "last_voice_to_first_audio_ms": 1102.4,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 941.1,
+        "final_to_first_token_ms": 7.2,
+        "final_to_first_audio_ms": 179.8,
+        "last_word_to_first_audio_ms": 1120.9,
+        "wer_errors": 3,
+        "wer_ref": 8,
+        "districts": [
+          "vijayawada"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q06",
+        "query": "How will air pollution be monitored in Visakhapatnam?",
+        "transcript": "How will air pollution be monitored in Visakhapatnam?",
+        "server_endpoint_ms": 900,
+        "turn": "365b6209",
+        "server": {
+          "final_to_first_audio_ms": 193.1,
+          "first_synth_ms": 187.4,
+          "last_voice_to_first_audio_ms": 1094.0,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 905.4,
+        "final_to_first_token_ms": 1.7,
+        "final_to_first_audio_ms": 192.7,
+        "last_word_to_first_audio_ms": 1098.0,
+        "wer_errors": 0,
+        "wer_ref": 8,
+        "districts": [
+          "visakhapatnam"
+        ],
+        "districts_heard": [
+          "visakhapatnam"
+        ]
+      },
+      {
+        "id": "q07",
+        "query": "What are the education plans for Vijayawada?",
+        "transcript": "What are the education plans for Vegawat",
+        "server_endpoint_ms": 900,
+        "turn": "c7a42068",
+        "server": {
+          "final_to_first_audio_ms": 169.9,
+          "first_synth_ms": 161.9,
+          "last_voice_to_first_audio_ms": 1070.8,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 881.8,
+        "final_to_first_token_ms": 2.5,
+        "final_to_first_audio_ms": 168.1,
+        "last_word_to_first_audio_ms": 1049.8,
+        "wer_errors": 1,
+        "wer_ref": 7,
+        "districts": [
+          "vijayawada"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q08",
+        "query": "What healthcare initiatives does the candidate propose for Vijayawada?",
+        "transcript": "What healthcare initiatives does the candidate propose for Vidya Owata",
+        "server_endpoint_ms": 940,
+        "turn": "1490de61",
+        "server": {
+          "final_to_first_audio_ms": 200.7,
+          "first_synth_ms": 191.5,
+          "last_voice_to_first_audio_ms": 1141.5,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 943.0,
+        "final_to_first_token_ms": 9.3,
+        "final_to_first_audio_ms": 199.0,
+        "last_word_to_first_audio_ms": 1142.0,
+        "wer_errors": 2,
+        "wer_ref": 9,
+        "districts": [
+          "vijayawada"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q09",
+        "query": "How many jobs will the flagship projects create in each district?",
+        "transcript": "How many jobs will the flyco projects create in each district",
+        "server_endpoint_ms": 920,
+        "turn": "c5649c85",
+        "server": {
+          "final_to_first_audio_ms": 159.8,
+          "first_synth_ms": 155.3,
+          "last_voice_to_first_audio_ms": 1080.7,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 874.0,
+        "final_to_first_token_ms": 3.1,
+        "final_to_first_audio_ms": 158.3,
+        "last_word_to_first_audio_ms": 1032.3,
+        "wer_errors": 1,
+        "wer_ref": 11,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q10",
+        "query": "What support is offered to chilli farmers?",
+        "transcript": "What support is offered to Chile farmers",
+        "server_endpoint_ms": 920,
+        "turn": "52dd5042",
+        "server": {
+          "final_to_first_audio_ms": 200.9,
+          "first_synth_ms": 196.0,
+          "last_voice_to_first_audio_ms": 1121.6,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 962.9,
+        "final_to_first_token_ms": 2.8,
+        "final_to_first_audio_ms": 201.0,
+        "last_word_to_first_audio_ms": 1163.9,
+        "wer_errors": 1,
+        "wer_ref": 7,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q11",
+        "query": "Compare the new hospital plans for Guntur and Visakhapatnam.",
+        "transcript": "Compare the new hospital plans for Guntur and Visakha put them",
+        "server_endpoint_ms": 940,
+        "turn": "987099f2",
+        "server": {
+          "final_to_first_audio_ms": 150.1,
+          "first_synth_ms": 146.0,
+          "last_voice_to_first_audio_ms": 1090.9,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 941.9,
+        "final_to_first_token_ms": 3.5,
+        "final_to_first_audio_ms": 149.5,
+        "last_word_to_first_audio_ms": 1091.4,
+        "wer_errors": 3,
+        "wer_ref": 9,
+        "districts": [
+          "guntur",
+          "visakhapatnam"
+        ],
+        "districts_heard": [
+          "guntur",
+          "visakhapatnam"
+        ]
+      },
+      {
+        "id": "q12",
+        "query": "What healthcare schemes are available?",
+        "transcript": "When healthcare schemes are available",
+        "server_endpoint_ms": 920,
+        "turn": "07b708dc",
+        "server": {
+          "final_to_first_audio_ms": 171.6,
+          "first_synth_ms": 162.9,
+          "last_voice_to_first_audio_ms": 1092.2,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 960.2,
+        "final_to_first_token_ms": 2.7,
+        "final_to_first_audio_ms": 168.1,
+        "last_word_to_first_audio_ms": 1128.3,
+        "wer_errors": 1,
+        "wer_ref": 5,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q13",
+        "query": "What about education?",
+        "transcript": "What about the education?",
+        "server_endpoint_ms": 920,
+        "turn": "6caceaff",
+        "server": {
+          "final_to_first_audio_ms": 199.9,
+          "first_synth_ms": 194.9,
+          "last_voice_to_first_audio_ms": 1120.5,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 926.3,
+        "final_to_first_token_ms": 1.9,
+        "final_to_first_audio_ms": 199.3,
+        "last_word_to_first_audio_ms": 1125.6,
+        "wer_errors": 1,
+        "wer_ref": 3,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q14",
+        "query": "What is planned for farmers there?",
+        "transcript": "What is planned for farmers there",
+        "server_endpoint_ms": 920,
+        "turn": "72aad2b0",
+        "server": {
+          "final_to_first_audio_ms": 250.6,
+          "first_synth_ms": 240.9,
+          "last_voice_to_first_audio_ms": 1172.1,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 1038.1,
+        "final_to_first_token_ms": 17.9,
+        "final_to_first_audio_ms": 252.3,
+        "last_word_to_first_audio_ms": 1290.4,
+        "wer_errors": 0,
+        "wer_ref": 6,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q15",
+        "query": "Who is eligible for it?",
+        "transcript": "Who's eligible for it?",
+        "server_endpoint_ms": 900,
+        "turn": "2beffa7e",
+        "server": {
+          "final_to_first_audio_ms": 161.3,
+          "first_synth_ms": 156.1,
+          "last_voice_to_first_audio_ms": 1062.1,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 940.0,
+        "final_to_first_token_ms": 2.1,
+        "final_to_first_audio_ms": 160.7,
+        "last_word_to_first_audio_ms": 1100.7,
+        "wer_errors": 2,
+        "wer_ref": 5,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q16",
+        "query": "uh so what are you guys doing for, um, farmers near Guntur",
+        "transcript": "So what are you guys doing for farmers near gunster",
+        "server_endpoint_ms": 920,
+        "turn": "5a8c3c1c",
+        "server": {
+          "final_to_first_audio_ms": 181.2,
+          "first_synth_ms": 176.7,
+          "last_voice_to_first_audio_ms": 1101.9,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 958.3,
+        "final_to_first_token_ms": 1.8,
+        "final_to_first_audio_ms": 180.8,
+        "last_word_to_first_audio_ms": 1139.1,
+        "wer_errors": 3,
+        "wer_ref": 12,
+        "districts": [
+          "guntur"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q17",
+        "query": "vizag IT corridor how many jobs",
+        "transcript": "They say corridor how many job",
+        "server_endpoint_ms": 900,
+        "turn": "3a5d81a7",
+        "server": {
+          "final_to_first_audio_ms": 142.7,
+          "first_synth_ms": 137.2,
+          "last_voice_to_first_audio_ms": 1043.4,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 910.8,
+        "final_to_first_token_ms": 1.7,
+        "final_to_first_audio_ms": 141.9,
+        "last_word_to_first_audio_ms": 1052.7,
+        "wer_errors": 3,
+        "wer_ref": 6,
+        "districts": [
+          "visakhapatnam"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q18",
+        "query": "I live in bezawada, any new hospitals coming up",
+        "transcript": "I live in visuwata. Any new hospitals coming up",
+        "server_endpoint_ms": 920,
+        "turn": "32f32b8b",
+        "server": {
+          "final_to_first_audio_ms": 189.9,
+          "first_synth_ms": 177.1,
+          "last_voice_to_first_audio_ms": 1111.5,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 1046.9,
+        "final_to_first_token_ms": 16.5,
+        "final_to_first_audio_ms": 191.7,
+        "last_word_to_first_audio_ms": 1238.6,
+        "wer_errors": 1,
+        "wer_ref": 9,
+        "districts": [
+          "vijayawada"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q19",
+        "query": "Udayam Breakfast",
+        "transcript": "Yudayam breakfast",
+        "server_endpoint_ms": 900,
+        "turn": "7cc53e26",
+        "server": {
+          "final_to_first_audio_ms": 191.5,
+          "first_synth_ms": 179.9,
+          "last_voice_to_first_audio_ms": 1092.2,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 954.5,
+        "final_to_first_token_ms": 12.5,
+        "final_to_first_audio_ms": 192.1,
+        "last_word_to_first_audio_ms": 1146.6,
+        "wer_errors": 1,
+        "wer_ref": 2,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q20",
+        "query": "Matru Poshana kit",
+        "transcript": "Matru Poshana Kit",
+        "server_endpoint_ms": 920,
+        "turn": "1c28156e",
+        "server": {
+          "final_to_first_audio_ms": 179.1,
+          "first_synth_ms": 173.7,
+          "last_voice_to_first_audio_ms": 1099.7,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 952.6,
+        "final_to_first_token_ms": 1.6,
+        "final_to_first_audio_ms": 178.6,
+        "last_word_to_first_audio_ms": 1131.2,
+        "wer_errors": 0,
+        "wer_ref": 3,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q21",
+        "query": "Kisan Price Guarantee Fund",
+        "transcript": "Kisan Price Guarantee Fund",
+        "server_endpoint_ms": 900,
+        "turn": "afe25da3",
+        "server": {
+          "final_to_first_audio_ms": 155.2,
+          "first_synth_ms": 142.3,
+          "last_voice_to_first_audio_ms": 1055.9,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 850.5,
+        "final_to_first_token_ms": 8.5,
+        "final_to_first_audio_ms": 154.4,
+        "last_word_to_first_audio_ms": 1004.9,
+        "wer_errors": 0,
+        "wer_ref": 4,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q22",
+        "query": "Where is the Vijayawada campaign office?",
+        "transcript": "Where's the Vijoada campaign office",
+        "server_endpoint_ms": 920,
+        "turn": "25e263e3",
+        "server": {
+          "final_to_first_audio_ms": 180.4,
+          "first_synth_ms": 173.5,
+          "last_voice_to_first_audio_ms": 1101.3,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 972.2,
+        "final_to_first_token_ms": 2.9,
+        "final_to_first_audio_ms": 179.2,
+        "last_word_to_first_audio_ms": 1151.4,
+        "wer_errors": 3,
+        "wer_ref": 6,
+        "districts": [
+          "vijayawada"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q23",
+        "query": "Which page of the manifesto talks about flood protection?",
+        "transcript": "which page of the manifesto talks about flood protection",
+        "server_endpoint_ms": 920,
+        "turn": "167c7232",
+        "server": {
+          "final_to_first_audio_ms": 154.0,
+          "first_synth_ms": 149.5,
+          "last_voice_to_first_audio_ms": 1074.7,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 981.3,
+        "final_to_first_token_ms": 7.3,
+        "final_to_first_audio_ms": 152.2,
+        "last_word_to_first_audio_ms": 1133.5,
+        "wer_errors": 0,
+        "wer_ref": 9,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q24",
+        "query": "Who is the candidate for Vijayawada Central and what is her background?",
+        "transcript": "Who is the candidate for Vidiwata Central and what is her background",
+        "server_endpoint_ms": 920,
+        "turn": "b6c600a5",
+        "server": {
+          "final_to_first_audio_ms": 169.8,
+          "first_synth_ms": 165.5,
+          "last_voice_to_first_audio_ms": 1090.5,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 872.6,
+        "final_to_first_token_ms": 1.9,
+        "final_to_first_audio_ms": 170.4,
+        "last_word_to_first_audio_ms": 1043.0,
+        "wer_errors": 1,
+        "wer_ref": 12,
+        "districts": [
+          "vijayawada"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q25",
+        "query": "What is the campaign's policy on lunar mining?",
+        "transcript": "What is the campaign's policy on lunar mining?",
+        "server_endpoint_ms": 920,
+        "turn": "bd4b6c89",
+        "server": {
+          "final_to_first_audio_ms": 487.4,
+          "first_synth_ms": 465.9,
+          "last_voice_to_first_audio_ms": 1408.5,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 870.9,
+        "final_to_first_token_ms": 11.7,
+        "final_to_first_audio_ms": 486.6,
+        "last_word_to_first_audio_ms": 1357.5,
+        "wer_errors": 0,
+        "wer_ref": 8,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q26",
+        "query": "What is the alliance's position on building cricket stadiums?",
+        "transcript": "What is the alliance's position on billing credit stadiums",
+        "server_endpoint_ms": 940,
+        "turn": "2804d63a",
+        "server": {
+          "final_to_first_audio_ms": 184.4,
+          "first_synth_ms": 178.0,
+          "last_voice_to_first_audio_ms": 1125.1,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 965.4,
+        "final_to_first_token_ms": 2.3,
+        "final_to_first_audio_ms": 183.2,
+        "last_word_to_first_audio_ms": 1148.6,
+        "wer_errors": 2,
+        "wer_ref": 9,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q27",
+        "query": "What is the defence policy on the China border?",
+        "transcript": "What is the defense policy on the China border?",
+        "server_endpoint_ms": 920,
+        "turn": "00e5c3ee",
+        "server": {
+          "final_to_first_audio_ms": 441.7,
+          "first_synth_ms": 428.5,
+          "last_voice_to_first_audio_ms": 1362.4,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 897.2,
+        "final_to_first_token_ms": 2.9,
+        "final_to_first_audio_ms": 440.2,
+        "last_word_to_first_audio_ms": 1337.4,
+        "wer_errors": 1,
+        "wer_ref": 9,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q28",
+        "query": "Who won the last election in Kurnool?",
+        "transcript": "Who won the last election in Colonel",
+        "server_endpoint_ms": 900,
+        "turn": "6407ecfe",
+        "server": {
+          "final_to_first_audio_ms": 181.4,
+          "first_synth_ms": 177.7,
+          "last_voice_to_first_audio_ms": 1082.2,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 926.4,
+        "final_to_first_token_ms": 3.4,
+        "final_to_first_audio_ms": 181.0,
+        "last_word_to_first_audio_ms": 1107.4,
+        "wer_errors": 1,
+        "wer_ref": 7,
+        "districts": [
+          "kurnool"
+        ],
+        "districts_heard": []
+      },
+      {
+        "id": "q29",
+        "query": "What is the price of petrol today?",
+        "transcript": "What is the price of petrol today?",
+        "server_endpoint_ms": 900,
+        "turn": "0905b5a6",
+        "server": {
+          "final_to_first_audio_ms": 149.3,
+          "first_synth_ms": 144.8,
+          "last_voice_to_first_audio_ms": 1050.1,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 941.2,
+        "final_to_first_token_ms": 1.8,
+        "final_to_first_audio_ms": 149.3,
+        "last_word_to_first_audio_ms": 1090.5,
+        "wer_errors": 0,
+        "wer_ref": 7,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q30",
+        "query": "Is the Health Shield free?",
+        "transcript": "Is the health shield free from",
+        "server_endpoint_ms": 920,
+        "turn": "a23258b5",
+        "server": {
+          "final_to_first_audio_ms": 143.7,
+          "first_synth_ms": 136.0,
+          "last_voice_to_first_audio_ms": 1064.8,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 940.3,
+        "final_to_first_token_ms": 3.1,
+        "final_to_first_audio_ms": 142.1,
+        "last_word_to_first_audio_ms": 1082.4,
+        "wer_errors": 1,
+        "wer_ref": 5,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q31",
+        "query": "What is the policy on lunar mining?",
+        "transcript": "What is the policy on lunar mining",
+        "server_endpoint_ms": 900,
+        "turn": "190fed43",
+        "server": {
+          "final_to_first_audio_ms": 405.5,
+          "first_synth_ms": 400.4,
+          "last_voice_to_first_audio_ms": 1306.2,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 933.1,
+        "final_to_first_token_ms": 8.0,
+        "final_to_first_audio_ms": 404.8,
+        "last_word_to_first_audio_ms": 1337.9,
+        "wer_errors": 0,
+        "wer_ref": 7,
+        "districts": [],
+        "districts_heard": []
+      },
+      {
+        "id": "q32",
+        "query": "Which cricket team does the candidate support?",
+        "transcript": "which Cricket teamed as the candidate support",
+        "server_endpoint_ms": 920,
+        "turn": "2e651ed2",
+        "server": {
+          "final_to_first_audio_ms": 189.5,
+          "first_synth_ms": 183.2,
+          "last_voice_to_first_audio_ms": 1110.4,
+          "stt_final_ms": 0.1
+        },
+        "last_word_to_final_ms": 1003.9,
+        "final_to_first_token_ms": 2.5,
+        "final_to_first_audio_ms": 189.1,
+        "last_word_to_first_audio_ms": 1193.0,
+        "wer_errors": 2,
+        "wer_ref": 7,
+        "districts": [],
+        "districts_heard": []
+      }
+    ],
+    "summary": {
+      "questions": 32,
+      "recognised": 32,
+      "missed": [],
+      "wer": 0.16,
+      "district_recall": 0.231,
+      "server_endpoint_ms": {
+        "n": 32,
+        "p50": 920.0,
+        "p90": 920.0,
+        "mean": 915.0,
+        "max": 940
+      },
+      "last_word_to_final_ms": {
+        "n": 32,
+        "p50": 940.7,
+        "p90": 980.4,
+        "mean": 937.0,
+        "max": 1046.9
+      },
+      "final_to_first_token_ms": {
+        "n": 32,
+        "p50": 2.9,
+        "p90": 11.5,
+        "mean": 5.0,
+        "max": 17.9
+      },
+      "final_to_first_audio_ms": {
+        "n": 32,
+        "p50": 180.3,
+        "p90": 247.4,
+        "mean": 202.3,
+        "max": 486.6
+      },
+      "last_word_to_first_audio_ms": {
+        "n": 32,
+        "p50": 1126.9,
+        "p90": 1285.2,
+        "mean": 1139.3,
+        "max": 1357.5
+      },
+      "first_synth_ms": {
+        "n": 32,
+        "p50": 176.3,
+        "p90": 236.9,
+        "mean": 195.9,
+        "max": 465.9
+      },
+      "barge_in_detect_ms": {},
+      "barge_in_caught": "0/0"
+    }
+  }
+}

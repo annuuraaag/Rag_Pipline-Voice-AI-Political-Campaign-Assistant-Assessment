@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.deps import get_container
 from app.container import Container
+from app.voice.endpointing import endpointing_info
 
 router = APIRouter(tags=["system"])
 
@@ -48,8 +49,10 @@ def health(c: Container = Depends(get_container)) -> dict:
                     "status": c.ocr.status if c.ocr else "disabled"},
             "voice": {"ok": True, "websocket": "/ws/voice",
                       "server_transcription": f"{c.transcriber.name}/{c.transcriber.model}" if c.transcriber else None,
+                      "server_speech": c.speech_status,
                       "speculation": {"debounce_ms": s.voice_debounce_ms, "stable_ms": s.voice_stable_ms,
-                                      "min_words": s.voice_min_words, "word_step": s.voice_word_step}},
+                                      "min_words": s.voice_min_words, "word_step": s.voice_word_step},
+                      "endpointing": endpointing_info(s)},
             "index_consistency": {
                 "chunks_from_other_embedding_models": c.store.count_stale(c.embedder.model_name) if store_ok else None,
                 "startup": c.startup_report,

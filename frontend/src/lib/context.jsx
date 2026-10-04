@@ -10,7 +10,10 @@ export const DEFAULT_SETTINGS = {
   rate: 1.05,
   autoSpeak: true,        // speak answers to spoken questions
   handsFree: false,       // conversation mode: keep listening, interrupt by speaking
-  endSilenceMs: 900,      // pause that ends an utterance
+  endSilenceMs: 900,      // pause that ends an utterance (when smart detection is off or unsure)
+  smartEndpointing: true, // shorter pause after a finished question, longer after "for…", "um…"
+  speechInput: "auto",    // auto | browser | server: who recognises speech
+  speechOutput: "auto",   // auto | browser | server: whose voice speaks the answer
   inspector: true,
 };
 

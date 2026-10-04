@@ -1,0 +1,379 @@
+{
+  "queries": 32,
+  "fixed_ms": 900,
+  "waits_ms": {
+    "complete": 300,
+    "likely": 550,
+    "unsure": 900,
+    "incomplete": 1600
+  },
+  "final": {
+    "turns": {
+      "likely": 14,
+      "complete": 14,
+      "unsure": 4
+    },
+    "adaptive_wait_ms": {
+      "mean": 484.4,
+      "p50": 550.0,
+      "max": 900
+    },
+    "fixed_wait_ms": 900,
+    "saved_ms_mean": 415.6,
+    "finished_questions_waiting_longer_than_fixed": 0
+  },
+  "prefixes": {
+    "n": 199,
+    "turns": {
+      "incomplete": 110,
+      "unsure": 38,
+      "likely": 42,
+      "complete": 9
+    },
+    "early_end_if_paused_ms": {
+      "300": {
+        "adaptive": 0.045,
+        "fixed": 0.0
+      },
+      "500": {
+        "adaptive": 0.045,
+        "fixed": 0.0
+      },
+      "700": {
+        "adaptive": 0.256,
+        "fixed": 0.0
+      },
+      "900": {
+        "adaptive": 0.447,
+        "fixed": 1.0
+      },
+      "1200": {
+        "adaptive": 0.447,
+        "fixed": 1.0
+      }
+    },
+    "protected_beyond_fixed": 0.553
+  },
+  "rows": [
+    {
+      "id": "q01",
+      "type": "direct",
+      "heard": "how much coverage does the sca health shield provide",
+      "turn": "likely",
+      "wait_ms": 550,
+      "reason": "full clause",
+      "early_points_500ms": 0,
+      "trace": "how:I much:I coverage:U does:I the:I sca:U health:U shield:U provide:L"
+    },
+    {
+      "id": "q02",
+      "type": "direct",
+      "heard": "how many teacher posts will be filled",
+      "turn": "likely",
+      "wait_ms": 550,
+      "reason": "full clause",
+      "early_points_500ms": 0,
+      "trace": "how:I many:I teacher:U posts:U will:I be:I filled:L"
+    },
+    {
+      "id": "q03",
+      "type": "direct",
+      "heard": "what is the lean season allowance for fishermen",
+      "turn": "complete",
+      "wait_ms": 300,
+      "reason": "complete question ending on 'fishermen'",
+      "early_points_500ms": 0,
+      "trace": "what:I is:I the:I lean:L season:L allowance:L for:I fishermen:C"
+    },
+    {
+      "id": "q04",
+      "type": "district",
+      "heard": "what healthcare facilities are planned in guntur",
+      "turn": "complete",
+      "wait_ms": 300,
+      "reason": "complete question ending on 'guntur'",
+      "early_points_500ms": 0,
+      "trace": "what:I healthcare:U facilities:U are:I planned:L in:I guntur:C"
+    },
+    {
+      "id": "q05",
+      "type": "district",
+      "heard": "what will be done about floods in vijayawada",
+      "turn": "complete",
+      "wait_ms": 300,
+      "reason": "complete question ending on 'vijayawada'",
+      "early_points_500ms": 1,
+      "trace": "what:I will:I be:I done:L about:I floods:C in:I vijayawada:C"
+    },
+    {
+      "id": "q06",
+      "type": "district",
+      "heard": "how will air pollution be monitored in visakhapatnam",
+      "turn": "complete",
+      "wait_ms": 300,
+      "reason": "complete question ending on 'visakhapatnam'",
+      "early_points_500ms": 0,
+      "trace": "how:I will:I air:U pollution:L be:I monitored:L in:I visakhapatnam:C"
+    },
+    {
+      "id": "q07",
+      "type": "district",
+      "heard": "what are the education plans for vijayawada",
+      "turn": "complete",
+      "wait_ms": 300,
+      "reason": "complete question ending on 'vijayawada'",
+      "early_points_500ms": 0,
+      "trace": "what:I are:I the:I education:L plans:L for:I vijayawada:C"
+    },
+    {
+      "id": "q08",
+      "type": "multi_doc",
+      "heard": "what healthcare initiatives does the candidate propose for vijayawada",
+      "turn": "complete",
+      "wait_ms": 300,
+      "reason": "complete question ending on 'vijayawada'",
+      "early_points_500ms": 0,
+      "trace": "what:I healthcare:U initiatives:U does:I the:I candidate:U propose:L for:I vijayawada:C"
+    },
+    {
+      "id": "q09",
+      "type": "multi_doc",
+      "heard": "how many jobs will the flagship projects create in each district",
+      "turn": "complete",
+      "wait_ms": 300,
+      "reason": "complete question ending on 'district'",
+      "early_points_500ms": 0,
+      "trace": "how:I many:I jobs:U will:I the:I flagship:L projects:L create:L in:I each:I district:C"
+    },
+    {
+      "id": "q10",
+      "type": "multi_doc",
+      "heard": "what support is offered to chilli farmers",
+      "turn": "complete",
+      "wait_ms": 300,
+      "reason": "complete question ending on 'farmers'",
+      "early_points_500ms": 1,
+      "trace": "what:I support:U is:I offered:L to:I chilli:C farmers:C"
+    },
+    {
+      "id": "q11",
+      "type": "multi_doc",
+      "heard": "compare the new hospital plans for guntur and visakhapatnam",
+      "turn": "complete",
+      "wait_ms": 300,
+      "reason": "complete request ending on 'visakhapatnam'",
+      "early_points_500ms": 1,
+      "trace": "compare:U the:I new:U hospital:U plans:L for:I guntur:C and:I visakhapatnam:C"
+    },
+    {
+      "id": "q12",
+      "type": "follow_up",
+      "heard": "what healthcare schemes are available",
+      "turn": "likely",
+      "wait_ms": 550,
+      "reason": "full clause",
+      "early_points_500ms": 0,
+      "trace": "what:I healthcare:U schemes:U are:I available:L"
+    },
+    {
+      "id": "q13",
+      "type": "follow_up",
+      "heard": "what about education",
+      "turn": "complete",
+      "wait_ms": 300,
+      "reason": "complete question ending on 'education'",
+      "early_points_500ms": 0,
+      "trace": "what:I about:I education:C"
+    },
+    {
+      "id": "q14",
+      "type": "follow_up",
+      "heard": "what is planned for farmers there",
+      "turn": "complete",
+      "wait_ms": 300,
+      "reason": "complete question ending on 'there'",
+      "early_points_500ms": 1,
+      "trace": "what:I is:I planned:U for:I farmers:C there:C"
+    },
+    {
+      "id": "q15",
+      "type": "follow_up",
+      "heard": "who is eligible for it",
+      "turn": "complete",
+      "wait_ms": 300,
+      "reason": "complete question ending on 'it'",
+      "early_points_500ms": 0,
+      "trace": "who:I is:I eligible:U for:I it:C"
+    },
+    {
+      "id": "q16",
+      "type": "voice",
+      "heard": "uh so what are you guys doing for um farmers near guntur",
+      "turn": "complete",
+      "wait_ms": 300,
+      "reason": "complete question ending on 'guntur'",
+      "early_points_500ms": 1,
+      "trace": "uh:I so:I what:I are:I you:U guys:L doing:L for:I um:I farmers:C near:I guntur:C"
+    },
+    {
+      "id": "q17",
+      "type": "voice",
+      "heard": "vizag it corridor how many jobs",
+      "turn": "unsure",
+      "wait_ms": 900,
+      "reason": "no strong cue",
+      "early_points_500ms": 0,
+      "trace": "vizag:U it:U corridor:U how:I many:I jobs:U"
+    },
+    {
+      "id": "q18",
+      "type": "voice",
+      "heard": "i live in bezawada any new hospitals coming up",
+      "turn": "likely",
+      "wait_ms": 550,
+      "reason": "full clause",
+      "early_points_500ms": 2,
+      "trace": "i:I live:U in:I bezawada:C any:I new:L hospitals:C coming:L up:L"
+    },
+    {
+      "id": "q19",
+      "type": "entity",
+      "heard": "udayam breakfast",
+      "turn": "unsure",
+      "wait_ms": 900,
+      "reason": "no strong cue",
+      "early_points_500ms": 0,
+      "trace": "udayam:U breakfast:U"
+    },
+    {
+      "id": "q20",
+      "type": "entity",
+      "heard": "matru poshana kit",
+      "turn": "unsure",
+      "wait_ms": 900,
+      "reason": "no strong cue",
+      "early_points_500ms": 0,
+      "trace": "matru:U poshana:U kit:U"
+    },
+    {
+      "id": "q21",
+      "type": "entity",
+      "heard": "kisan price guarantee fund",
+      "turn": "unsure",
+      "wait_ms": 900,
+      "reason": "no strong cue",
+      "early_points_500ms": 0,
+      "trace": "kisan:U price:U guarantee:U fund:U"
+    },
+    {
+      "id": "q22",
+      "type": "entity",
+      "heard": "where is the vijayawada campaign office",
+      "turn": "likely",
+      "wait_ms": 550,
+      "reason": "full clause",
+      "early_points_500ms": 0,
+      "trace": "where:I is:I the:I vijayawada:L campaign:L office:L"
+    },
+    {
+      "id": "q23",
+      "type": "citation",
+      "heard": "which page of the manifesto talks about flood protection",
+      "turn": "likely",
+      "wait_ms": 550,
+      "reason": "full clause",
+      "early_points_500ms": 1,
+      "trace": "which:I page:U of:I the:I manifesto:L talks:L about:I flood:C protection:L"
+    },
+    {
+      "id": "q24",
+      "type": "citation",
+      "heard": "who is the candidate for vijayawada central and what is her background",
+      "turn": "likely",
+      "wait_ms": 550,
+      "reason": "full clause",
+      "early_points_500ms": 1,
+      "trace": "who:I is:I the:I candidate:L for:I vijayawada:C central:L and:I what:I is:I her:I background:L"
+    },
+    {
+      "id": "q25",
+      "type": "negative",
+      "heard": "what is the campaign's policy on lunar mining",
+      "turn": "likely",
+      "wait_ms": 550,
+      "reason": "full clause",
+      "early_points_500ms": 0,
+      "trace": "what:I is:I the:I campaign's:L policy:L on:I lunar:L mining:L"
+    },
+    {
+      "id": "q26",
+      "type": "negative",
+      "heard": "what is the alliance's position on building cricket stadiums",
+      "turn": "likely",
+      "wait_ms": 550,
+      "reason": "full clause",
+      "early_points_500ms": 0,
+      "trace": "what:I is:I the:I alliance's:L position:L on:I building:L cricket:L stadiums:L"
+    },
+    {
+      "id": "q27",
+      "type": "negative",
+      "heard": "what is the defence policy on the china border",
+      "turn": "likely",
+      "wait_ms": 550,
+      "reason": "full clause",
+      "early_points_500ms": 0,
+      "trace": "what:I is:I the:I defence:L policy:L on:I the:I china:L border:L"
+    },
+    {
+      "id": "q28",
+      "type": "negative",
+      "heard": "who won the last election in kurnool",
+      "turn": "complete",
+      "wait_ms": 300,
+      "reason": "complete question ending on 'kurnool'",
+      "early_points_500ms": 0,
+      "trace": "who:I won:U the:I last:L election:L in:I kurnool:C"
+    },
+    {
+      "id": "q29",
+      "type": "negative",
+      "heard": "what is the price of petrol today",
+      "turn": "likely",
+      "wait_ms": 550,
+      "reason": "full clause",
+      "early_points_500ms": 0,
+      "trace": "what:I is:I the:I price:L of:I petrol:L today:L"
+    },
+    {
+      "id": "q30",
+      "type": "threshold",
+      "heard": "is the health shield free",
+      "turn": "likely",
+      "wait_ms": 550,
+      "reason": "full clause",
+      "early_points_500ms": 0,
+      "trace": "is:I the:I health:U shield:L free:L"
+    },
+    {
+      "id": "q31",
+      "type": "negative",
+      "heard": "what is the policy on lunar mining",
+      "turn": "likely",
+      "wait_ms": 550,
+      "reason": "full clause",
+      "early_points_500ms": 0,
+      "trace": "what:I is:I the:I policy:L on:I lunar:L mining:L"
+    },
+    {
+      "id": "q32",
+      "type": "negative",
+      "heard": "which cricket team does the candidate support",
+      "turn": "likely",
+      "wait_ms": 550,
+      "reason": "full clause",
+      "early_points_500ms": 0,
+      "trace": "which:I cricket:U team:U does:I the:I candidate:U support:L"
+    }
+  ]
+}

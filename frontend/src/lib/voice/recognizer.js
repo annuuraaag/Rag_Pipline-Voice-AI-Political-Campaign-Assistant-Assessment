@@ -4,7 +4,9 @@
 // which cuts questions in half ("what healthcare … schemes are there"). We run it continuously
 // instead and decide the end ourselves: no new words for `endSilenceMs` after speech → final.
 // Every result event also yields the full running transcript as a partial, which the server
-// uses for speculative retrieval.
+// uses for speculative retrieval. The server answers each partial with an end-of-turn verdict;
+// hint() then shortens the wait when the question sounds finished and lengthens it when it ends
+// on "for", "the" or "um".
 
 const SR = typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
 export const speechRecognitionSupported = Boolean(SR);
@@ -29,6 +31,8 @@ export function tidyTranscript(text, final = false) {
   return t;
 }
 
+const norm = (t) => (t.toLowerCase().match(/[a-z0-9']+/g) || []).join(" ");
+
 export function createRecognizer({ lang = "en-IN", endSilenceMs = 900, noSpeechMs = 8000, onPartial, onFinal,
   onSpeechStart, onSpeechEnd, onError, onEnd }) {
   if (!SR) throw new Error("Speech recognition is not supported in this browser.");
@@ -44,9 +48,15 @@ export function createRecognizer({ lang = "en-IN", endSilenceMs = 900, noSpeechM
   let running = false;
   let silenceTimer = null;
   let noSpeechTimer = null;
+  let lastResultAt = 0;
+  let hinted = null; // { text, waitMs }: the server's verdict on these exact words
 
   const text = () => `${finals} ${interim}`.replace(/\s+/g, " ").trim();
   const clearTimers = () => { clearTimeout(silenceTimer); clearTimeout(noSpeechTimer); };
+  const armSilence = (ms) => {
+    clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(() => finish("silence"), Math.max(0, ms));
+  };
 
   function finish(reason) {
     if (finished) return;
@@ -54,7 +64,8 @@ export function createRecognizer({ lang = "en-IN", endSilenceMs = 900, noSpeechM
     clearTimers();
     const t = text();
     try { rec.stop(); } catch { /* already stopped */ }
-    if (t) onFinal?.(t, reason);
+    // waitedMs: last recognised words → end of turn (the endpointing share of the latency).
+    if (t) onFinal?.(t, reason, lastResultAt ? Math.round(performance.now() - lastResultAt) : null);
     else onEnd?.("no-speech");
   }
 
@@ -74,10 +85,16 @@ export function createRecognizer({ lang = "en-IN", endSilenceMs = 900, noSpeechM
     const t = text();
     if (!t) return;
     clearTimeout(noSpeechTimer);
+    lastResultAt = performance.now();
+    if (hinted && hinted.text === norm(t)) {
+      // Same words as the last verdict (typically the final result repeating the interim one):
+      // the server sends no new hint for them, so keep that one.
+      armSilence(hinted.waitMs + (interim.trim() ? 150 : 0));
+    } else {
+      // Wait a little longer while words are still provisional: Chrome may yet revise them.
+      armSilence(interim.trim() ? endSilenceMs + 400 : endSilenceMs);
+    }
     onPartial?.(t);
-    clearTimeout(silenceTimer);
-    // Wait a little longer while words are still provisional: Chrome may yet revise them.
-    silenceTimer = setTimeout(() => finish("silence"), interim.trim() ? endSilenceMs + 400 : endSilenceMs);
   };
   rec.onerror = (event) => {
     if (event.error === "no-speech" || event.error === "aborted") return; // handled by onend
@@ -92,7 +109,7 @@ export function createRecognizer({ lang = "en-IN", endSilenceMs = 900, noSpeechM
 
   return {
     start() {
-      finals = ""; interim = ""; finished = false;
+      finals = ""; interim = ""; finished = false; hinted = null;
       rec.start();
     },
     /** User pressed stop: treat what we have as the final transcript. */
@@ -102,6 +119,16 @@ export function createRecognizer({ lang = "en-IN", endSilenceMs = 900, noSpeechM
       finished = true;
       clearTimers();
       try { rec.abort(); } catch { /* not started */ }
+    },
+    /** End-of-turn hint for the transcript ending in `forText`: end the turn after `waitMs` of
+     *  silence instead of the default. Ignored once newer words have arrived. */
+    hint(forText, waitMs) {
+      const now = norm(text());
+      const heard = norm(forText || "");
+      if (finished || !heard || !now.endsWith(heard)) return false;
+      hinted = { text: now, waitMs };
+      armSilence(waitMs + (interim.trim() ? 150 : 0) - (performance.now() - lastResultAt));
+      return true;
     },
     get running() { return running; },
     get transcript() { return text(); },

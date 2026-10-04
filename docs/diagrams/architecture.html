@@ -53,16 +53,16 @@
   <!-- browser -->
   <rect x="44" y="132" width="330" height="226" rx="12" class="box-accent" />
   <text x="62" y="158" class="h">Browser (React)</text>
-  <text x="62" y="182" class="t">• Web Speech API, interim results (en-IN)</text>
-  <text x="62" y="201" class="t">• End of utterance: 900 ms silence, or</text>
-  <text x="74" y="218" class="t">release Space (push-to-talk)</text>
-  <text x="62" y="237" class="t">• Streams partial transcripts as spoken</text>
+  <text x="62" y="182" class="t">• Web Speech API partials, or the mic</text>
+  <text x="74" y="199" class="t">as 16 kHz PCM to server recognition</text>
+  <text x="62" y="218" class="t">• End of question: 300 ms–1.6 s of silence,</text>
+  <text x="74" y="235" class="t">by how finished the words sound</text>
   <text x="62" y="256" class="t">• Speaks each sentence as it streams in</text>
-  <text x="74" y="273" class="t">(speechSynthesis, citations stripped)</text>
+  <text x="74" y="273" class="t">(browser voice or server audio)</text>
   <text x="62" y="292" class="t">• Barge-in: tap / Space / speak over it</text>
-  <text x="74" y="309" class="t">(echo filter in conversation mode)</text>
-  <text x="62" y="333" class="m">No Web Speech API → record + POST /transcribe</text>
-  <text x="62" y="348" class="m">(Whisper via Groq) · socket down → SSE /query</text>
+  <text x="74" y="309" class="t">(echo check; on the server with its STT)</text>
+  <text x="62" y="333" class="m">Server speech: VAD → Kroko / Deepgram / Whisper,</text>
+  <text x="62" y="348" class="m">name fix · Piper / Deepgram / OpenAI / ElevenLabs</text>
 
   <!-- controller -->
   <rect x="452" y="132" width="420" height="226" rx="12" class="box-accent" />
@@ -94,16 +94,17 @@
   <text x="1296" y="258" class="t">• Extractive fallback offline</text>
   <text x="1296" y="277" class="t">• Citations built from metadata;</text>
   <text x="1296" y="296" class="t">  invalid [S#] markers removed</text>
-  <text x="1296" y="315" class="t">• Memory committed once per turn</text>
-  <text x="1296" y="340" class="m">events: retrieval → token… → done</text>
+  <text x="1296" y="315" class="t">• Claim check: each sentence vs</text>
+  <text x="1296" y="330" class="t">  its cited passage (fix / flag)</text>
+  <text x="1296" y="348" class="m">events: retrieval → token… → done</text>
 
   <!-- lane 1 arrows -->
   <path d="M374 196 L450 196" class="arrow-accent" />
   <text x="381" y="188" class="lbl-accent">partial</text>
   <path d="M374 240 L450 240" class="arrow-accent" />
-  <text x="381" y="232" class="lbl-accent">final</text>
+  <text x="381" y="232" class="lbl-accent">final / audio</text>
   <path d="M450 288 L376 288" class="arrow-accent" />
-  <text x="381" y="281" class="lbl-accent">speculative</text>
+  <text x="381" y="281" class="lbl-accent">spec · hints</text>
   <path d="M872 182 L948 182" class="arrow" />
   <text x="880" y="174" class="lbl">store</text>
   <path d="M948 212 L874 212" class="arrow" />
@@ -260,7 +261,7 @@
 
   <text x="44" y="920" class="h">Measured (eval/results)</text>
   <text x="44" y="942" class="t">Retrieval, 32 labelled queries: Recall@5 0.95 · MRR 0.91 · follow-up Recall@5 0.33 → 0.92 with rewriting · with the reranker: 7/7 off-topic questions declined, Recall@5 0.94, MRR 0.95 (Docker run).</text>
-  <text x="44" y="961" class="t">Voice: an identical speculative retrieval was reused for 31 of 32 simulated spoken questions, taking retrieval off the path between the final transcript and the answer.</text>
+  <text x="44" y="961" class="t">Voice: an identical speculative retrieval was reused for 31 of 32 simulated spoken questions, taking retrieval off the critical path. Real audio: last word → first answer audio p50 749 ms (adaptive end of turn) vs 1,127 ms (fixed pause).</text>
   <text x="44" y="976" class="m">Fictional sample corpus. Informational assistant, never persuasive.</text>
 </svg>
 </body>

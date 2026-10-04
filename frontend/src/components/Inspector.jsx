@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, BookOpen, ChevronDown, FileText, Gauge, GitBranch, Image, Table2, X, Zap } from "lucide-react";
+import {
+  ArrowRight, BookOpen, CheckCircle2, ChevronDown, FileText, Gauge, GitBranch, Image, RefreshCw, Table2, TriangleAlert, X, Zap,
+} from "lucide-react";
 import { Badge, EmptyState, IconButton, Meter, Tabs } from "./ui.jsx";
 import { cx, ms, pages, titleCase } from "../lib/format.js";
 
@@ -57,11 +59,46 @@ function Sources({ message, focus }) {
   }
   return (
     <div className="sources">
+      {message.verification?.claims?.some((c) => c.verdict !== "no_claim") && <ClaimCheck v={message.verification} />}
       {items.map((c) => (
         <SourceCard key={c.chunk_id} c={c} full={byChunk[c.chunk_id]?.text} scores={byChunk[c.chunk_id]?.scores}
                     focused={focus === c.source_id} ref={(el) => { refs.current[c.source_id] = el; }} />
       ))}
     </div>
+  );
+}
+
+const VERDICTS = {
+  supported: { icon: CheckCircle2, label: "Found in", tone: "ok" },
+  corrected: { icon: RefreshCw, label: "Citation corrected to", tone: "accent" },
+  unsupported: { icon: TriangleAlert, label: "Not found in any source", tone: "warn" },
+};
+
+function ClaimCheck({ v }) {
+  const claims = v.claims.filter((c) => c.verdict !== "no_claim");
+  return (
+    <section className="panel claims" aria-label="Claim check">
+      <div className="panel-label">Claim check · {v.method}{v.removed ? ` · ${v.removed} removed` : ""}</div>
+      <ol>
+        {claims.map((c) => {
+          const d = VERDICTS[c.verdict];
+          const Icon = d.icon;
+          return (
+            <li key={c.index} className={`claim claim-${d.tone}`}>
+              <Icon size={14} aria-hidden />
+              <div className="min0">
+                <div className="claim-text">{c.text}</div>
+                <div className="claim-meta">
+                  {d.label}{c.verdict !== "unsupported" && ` ${c.sources.map((n) => `S${n}`).join(", ")}`}
+                  {c.verdict === "corrected" && c.cited.length > 0 && ` (cited ${c.cited.map((n) => `S${n}`).join(", ")})`}
+                  {c.verdict === "unsupported" && c.issues.length > 0 && ` · ${c.issues.join("; ")}`}
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }
 
@@ -97,7 +134,10 @@ function SourceCard({ c, full, scores, focused, ref }) {
         </span>
       </div>
       <div className="source-actions">
-        <span className={cx("cited-label", c.cited ? "yes" : "no")}>{c.cited ? "Cited in the answer" : "Retrieved, not cited"}</span>
+        <span className={cx("cited-label", c.cited ? (c.verified === false ? "warn" : "yes") : "no")}>
+          {!c.cited ? "Retrieved, not cited" : c.verified === true ? "Cited · claims verified here"
+            : c.verified === false ? "Cited · a claim was not found here" : "Cited in the answer"}
+        </span>
         {full && full.length > (c.snippet?.length || 0) && (
           <button className="link-btn" onClick={() => setOpen(!open)}>
             {open ? "Show less" : "Show full passage"} <ChevronDown size={13} className={cx(open && "rot")} aria-hidden />
@@ -207,15 +247,22 @@ function Latency({ message }) {
   if (!l) return <EmptyState icon={Gauge} title="Measuring…" />;
   const rows = STAGES.filter(([k]) => l[k] !== undefined).map(([k, label]) => ({ k, label, v: l[k] }));
   const max = Math.max(...rows.map((r) => r.v), 1);
-  const hero = v.first_audio_ms ?? l.first_token;
+  // Last word → first audio: the wait to be sure the question was over, then the answer's first sound.
+  const e2e = v.first_audio_ms !== undefined && v.endpoint_wait_ms != null ? v.endpoint_wait_ms + v.first_audio_ms : undefined;
+  const hero = e2e ?? v.first_audio_ms ?? l.first_token;
+  const heroLabel = e2e !== undefined ? "Last word → first spoken word"
+    : v.first_audio_ms !== undefined ? "End of question → first spoken word" : "Time to first word";
   return (
     <div className="latency">
       <section className="panel hero-panel">
-        <div className="panel-label">{v.first_audio_ms !== undefined ? "End of question → first spoken word" : "Time to first word"}</div>
+        <div className="panel-label">{heroLabel}</div>
         <div className="hero-num">{ms(hero)}</div>
-        <div className="hero-sub">Total {ms(l.total)} · measured on this request</div>
+        <div className="hero-sub">
+          {e2e !== undefined ? `End of question detected after ${ms(v.endpoint_wait_ms)} · first audio ${ms(v.first_audio_ms)} later`
+            : `Total ${ms(l.total)} · measured on this request`}
+        </div>
       </section>
-      {(v.cache || v.final_to_first_token_ms !== undefined) && (
+      {(v.cache || v.final_to_first_token_ms !== undefined || v.endpoint_wait_ms !== undefined) && (
         <section className="panel">
           <div className="panel-label">Voice pipeline</div>
           <dl className="kv">
@@ -224,8 +271,14 @@ function Latency({ message }) {
               : v.cache === "stage1" ? <Badge tone="accent" icon={Zap}>Candidates reused</Badge>
               : v.cache === "miss" ? <Badge>Not reusable</Badge> : "–"}</dd>
             {v.retrieval_saved_ms > 0 && (<><dt>Retrieval time saved</dt><dd>{ms(v.retrieval_saved_ms)}</dd></>)}
+            {v.endpoint_wait_ms != null && (<><dt>Last word → end of question</dt><dd>{ms(v.endpoint_wait_ms)}</dd></>)}
             {v.final_to_first_token_ms != null && (<><dt>Final transcript → first token</dt><dd>{ms(v.final_to_first_token_ms)}</dd></>)}
             {v.first_audio_ms !== undefined && (<><dt>→ first spoken word</dt><dd>{ms(v.first_audio_ms)}</dd></>)}
+            {v.stt_final_ms != null && (<><dt>Final transcript (server)</dt><dd>{ms(v.stt_final_ms)}</dd></>)}
+            {v.server?.first_synth_ms != null && (<><dt>First sentence synthesised in</dt><dd>{ms(v.server.first_synth_ms)}</dd></>)}
+            {v.server?.last_voice_to_first_audio_ms != null && (
+              <><dt>Last word → first audio sent (server)</dt><dd>{ms(v.server.last_voice_to_first_audio_ms)}</dd></>)}
+            {v.server?.skipped_unverified > 0 && (<><dt>Sentences not spoken (unverified)</dt><dd>{v.server.skipped_unverified}</dd></>)}
             {v.partials !== undefined && (<><dt>Partial transcripts</dt><dd>{v.partials} received · {v.speculative_searches} searches · {v.speculative_refines} reranks</dd></>)}
           </dl>
         </section>

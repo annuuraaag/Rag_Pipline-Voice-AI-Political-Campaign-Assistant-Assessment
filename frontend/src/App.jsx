@@ -135,7 +135,7 @@ function Shell() {
           </>
         )}
       </main>
-      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} health={health} />
     </div>
   );
 }

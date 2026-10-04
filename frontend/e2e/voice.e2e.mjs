@@ -18,6 +18,8 @@ const SHOTS = shotsArg > 0 ? process.argv[shotsArg + 1] : null;
 if (SHOTS) mkdirSync(SHOTS, { recursive: true });
 
 const FAKE_VOICE = () => {
+  // Browser recognition and the browser voice, even if the server also offers speech (see server-speech.e2e.mjs).
+  if (!localStorage.getItem("crag-settings")) localStorage.setItem("crag-settings", JSON.stringify({ speechInput: "browser", speechOutput: "browser" }));
   window.__voice = { next: "", spoken: [], cancels: 0, msPerChar: 12 };
   class FakeRecognition {
     start() {
@@ -119,6 +121,12 @@ try {
   await page.waitForSelector(".hero-num");
   const voiceKv = await page.textContent(".latency");
   check("latency tab shows the voice pipeline", /Speculative retrieval/.test(voiceKv) && /first spoken word/i.test(voiceKv));
+  const endpointMs = await page.evaluate(() => {
+    const dt = [...document.querySelectorAll(".latency dt")].find((d) => /Last word → end of question/.test(d.textContent));
+    const m = dt && /([\d.]+)\s*(ms|s)/.exec(dt.nextElementSibling.textContent);
+    return m ? Number(m[1]) * (m[2] === "s" ? 1000 : 1) : null;
+  });
+  check("a finished question ends after a short pause", endpointMs !== null && endpointMs < 600, `${endpointMs} ms`);
   await shot("05-latency");
 
   // ── 3. typed follow-up uses conversation memory ──────────────────────

@@ -546,3 +546,20 @@ table.pct td:first-child { color: var(--text-2); }
   table.docs th:nth-child(2), table.docs td:nth-child(2), table.docs th:nth-child(6), table.docs td:nth-child(6) { display: none; }
   .bar-row { grid-template-columns: 100px 1fr 40px; }
 }
+
+/* claim check: sentences the verifier could not match to the passage they cite */
+.claim-flag {
+  background: none; color: inherit; cursor: help; border-radius: 2px;
+  text-decoration: underline dotted var(--warn); text-decoration-thickness: 2px; text-underline-offset: 3px;
+}
+.claim-flag:focus-visible { outline: 2px solid var(--warn); outline-offset: 2px; }
+.cited-label.warn { color: var(--warn); }
+.claims ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.claim { display: flex; gap: 8px; align-items: flex-start; }
+.claim > svg { flex: none; margin-top: 3px; }
+.claim-ok > svg { color: var(--ok); }
+.claim-accent > svg { color: var(--accent-text); }
+.claim-warn > svg { color: var(--warn); }
+.claim-text { font-size: 13px; line-height: 1.45; color: var(--text); overflow-wrap: anywhere; }
+.claim-meta { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+.claim-warn .claim-meta { color: var(--warn); }

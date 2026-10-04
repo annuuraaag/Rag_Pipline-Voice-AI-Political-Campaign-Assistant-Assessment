@@ -119,16 +119,31 @@ With `session_id`, the turn is added to conversation memory (district, topic, en
   "answerable": true, "refusal_reason": null,
   "citations": [{"source_id": "S1", "chunk_id": "...", "document_name": "vijayawada_district_plan.pdf", "page": 1,
                  "page_end": null, "section": "Healthcare in Vijayawada", "district": "vijayawada",
-                 "category": "district_profile", "topic": "healthcare", "score": 0.97, "cited": true, "snippet": "..."}],
+                 "category": "district_profile", "topic": "healthcare", "score": 0.97, "cited": true, "snippet": "...",
+                 "verified": true}],
   "retrieval": {"… same trace as /retrieve …": "..."},
   "llm": {"provider": "groq", "model": "openai/gpt-oss-20b", "fallback": false, "error": null},
-  "latency_ms": {"retrieval_total": 243.0, "llm": 610.2, "total": 855.3},
-  "conversation": {"district": "vijayawada", "topic": "healthcare", "entity": null, "turns": 2}
+  "latency_ms": {"retrieval_total": 243.0, "llm": 610.2, "verify": 0.6, "total": 855.9},
+  "conversation": {"district": "vijayawada", "topic": "healthcare", "entity": null, "turns": 2},
+  "verification": {"policy": "flag", "method": "lexical + cross-encoder", "supported": 1, "corrected": 0,
+                   "unsupported": 0, "removed": 0, "latency_ms": 0.6,
+                   "claims": [{"index": 0, "text": "The plan adds a 200-bed mother and child block at Government General Hospital.",
+                               "cited": [1], "sources": [1], "verdict": "supported", "support": 1.0, "issues": []}]}
 }
 ```
 
 `refusal_reason`: `below_threshold` (nothing relevant enough; the LLM is not called),
-`no_documents`, or `model_refused` (the model said the sources don't cover it).
+`no_documents`, `model_refused` (the model said the sources don't cover it), or `unverified`
+(`CITATION_VERIFICATION=strict` removed every sentence).
+
+**`verification`** (app/generation/verify.py) checks every sentence of the answer against the
+passages it cites: its figures and districts must appear there, its capitalised names too, and
+enough of its content words (the cross-encoder accepts paraphrases when loaded). Per claim,
+`verdict` is `supported`, `corrected` (another passage supports it: `sources` holds the corrected
+citation, and the answer text was rewritten with it), `unsupported` (`issues` says why), or
+`no_claim` ("The documents don't say when."). `CITATION_VERIFICATION`: `flag` (default: mark
+unsupported sentences), `strict` (also remove them; the server voice skips them), `off`. A
+citation's `verified` is `true` when every claim citing it holds, `false` when one does not.
 
 **`stream: true`** returns `text/event-stream`:
 
@@ -136,7 +151,7 @@ With `session_id`, the turn is added to conversation memory (district, topic, en
 event: retrieval   data: {"type":"retrieval","request_id":"...","retrieval":{…trace…},"latency_ms":{…}}
 event: token       data: {"type":"token","text":"The plan adds"}
 event: token       data: {"type":"token","text":" a 200-bed …"}
-event: done        data: {"type":"done","answer":"…","answerable":true,"citations":[…],"llm":{…},"latency_ms":{…,"first_token":…},"conversation":{…}}
+event: done        data: {"type":"done","answer":"…","answerable":true,"citations":[…],"llm":{…},"latency_ms":{…,"first_token":…},"conversation":{…},"verification":{…}}
 event: error       data: {"type":"error","request_id":"...","message":"Something went wrong… Reference: …"}
 ```
 
@@ -147,18 +162,34 @@ curl -N localhost:8000/query -H 'content-type: application/json' \
 
 ## WS /ws/voice
 
-One connection per voice client. JSON text frames both ways. The server checks the `Origin`
+One connection per voice client. JSON text frames both ways, plus binary audio frames when the
+server recognises or speaks (`STT_PROVIDER` / `TTS_PROVIDER`). The server checks the `Origin`
 header against `CORS_ORIGINS`.
+
+Two ways to talk to it:
+- **Browser recognition** (Web Speech API): the client sends `partial` transcripts and a `final`
+  one; the server answers each partial with an `endpoint` hint telling the client how long a
+  silence should end the question.
+- **Server recognition**: the client streams the microphone (16 kHz PCM16 mono binary frames)
+  between `audio_start` and the end of the question; the server decides when the question is over
+  and sends `utterance`, then answers it.
+
+Either way the answer can be spoken by the browser or by the server voice (binary frames back).
 
 ### Client → server
 
 | Message | When | Effect |
 |---|---|---|
-| `{"type":"start","campaign_id":"default","session_id":"s-1","filters":{…}}` | after connecting, and whenever campaign / session / filters change | configures the connection; replies `started` |
-| `{"type":"partial","text":"what healthcare schemes"}` | on every interim transcript (any rate) | feeds the partial-transcript controller |
+| `{"type":"start","campaign_id":"default","session_id":"s-1","filters":{…},"speech":{"input":"server","output":"server","rate":1.0,"language":"en-IN"}}` | after connecting, and whenever campaign / session / filters / speech settings change | configures the connection; replies `started` with the speech sides actually in use (`server` only if the server has that provider) |
+| `{"type":"partial","text":"what healthcare schemes"}` | browser recognition: every interim transcript | feeds the partial-transcript controller; replies `endpoint` |
 | `{"type":"speech_end"}` | optional, when the recognizer reports end of speech | rerank the latest partial now (S2) |
-| `{"type":"final","text":"What healthcare schemes are there?","turn_id":"t1"}` | end of utterance | answers; supersedes an unfinished answer |
-| `{"type":"cancel"}` | barge-in | stops the current answer; replies `cancelled` |
+| `{"type":"final","text":"What healthcare schemes are there?","turn_id":"t1","speak":true}` | end of utterance, or a typed question | answers; supersedes an unfinished answer. `speak`: also speak it with the server voice |
+| binary: PCM16 mono, 16 kHz (e.g. 40 ms = 1,280 bytes per frame) | server recognition: while the microphone is open | recognised on the server; during an answer, watched for barge-in |
+| `{"type":"audio_start"}` | the user starts a question (server recognition) | opens a recognition turn |
+| `{"type":"audio_stop"}` | push-to-talk released / stop pressed | ends the question now |
+| `{"type":"audio_cancel"}` | the user abandons the question | drops it |
+| `{"type":"playback","playing":true\|false}` | the client starts / finishes speaking an answer | the server watches for barge-in while it is heard |
+| `{"type":"cancel"}` | barge-in from the client (tap) | stops the current answer and its audio; replies `cancelled` |
 | `{"type":"ping","t":123}` | keep-alive | replies `{"type":"pong","t":123}` |
 
 `partial`, `speech_end` and `final` work without `start` (server defaults are used).
@@ -167,13 +198,30 @@ header against `CORS_ORIGINS`.
 
 | Message | Meaning |
 |---|---|
-| `ready` | on connect: `llm`, `reranker` (bool), `transcribe` (server STT available), `speculation` settings |
+| `ready` | on connect: `llm`, `reranker` (bool), `transcribe` (`/transcribe` available), `speculation` and `endpointing` settings, `speech`: `{stt: {provider, model, streaming} \| null, tts: {provider, voice, sample_rate} \| null, vad}` |
+| `endpoint` | after every partial transcript: `turn` (`complete` \| `likely` \| `unsure` \| `incomplete`), `wait_ms` (the silence that should end the question), `p`, `reason`, and the `text` it refers to |
+| `transcript` | server recognition: a partial transcript (`text`) |
+| `utterance` | server recognition: the question is over. `text`, `turn_id` (the answer's events carry it), `reason` (`silence`, `manual`, `max_length`, `stalled`), `endpoint_ms` (silence after the last word), `stt_final_ms`. With empty `text`: `reason` `no_speech` / `no_words` |
 | `speculative` | a speculative search finished: `stage` `S1` (stage-1 candidates) or `S2` (reranked + gated), `query`, `latency_ms`, top `sources`, and for S2 `answerable`, `top_score` |
 | `retrieval` | as in SSE, plus `turn_id` and `cache`: `hit` (speculation reused in full), `stage1` (candidates reused, rerank run now), `miss` |
 | `token` | answer text delta, with `turn_id` |
-| `done` | as in SSE, plus `voice`: `{cache, retrieval_saved_ms, final_to_first_token_ms, partials, ignored_partials, speculative_searches, speculative_refines}` |
+| `done` | as in SSE, plus `voice`: `{cache, retrieval_saved_ms, final_to_first_token_ms, partials, ignored_partials, speculative_searches, speculative_refines, server_voice, endpoint_wait_ms?, stt_final_ms?}` |
+| binary | server voice: `uint32` little-endian header length, a JSON header `{"turn_id","seq","rate","sentence","text"?}` (`text` on the first frame of each sentence), then PCM16 mono at `rate` Hz (~250 ms per frame). Play frames back to back |
+| `audio_end` | all audio of `turn_id` has been sent: `chunks`, `sentences`, `skipped` (unverified sentences not spoken under `strict`) |
+| `audio_error` | the server voice failed; the text answer is unaffected |
+| `voice_metrics` | after `audio_end`: `final_to_first_audio_ms`, `first_synth_ms`, `sentences`, and for server recognition `endpoint_wait_ms`, `stt_final_ms`, `last_voice_to_first_audio_ms` (last word → first answer audio sent) |
+| `barge_in` | server recognition heard the user talk over the answer of `turn_id`: stop playing it; the interruption is already the next question |
 | `cancelled` | the answer was stopped |
 | `error` | `message` (and `turn_id`, `request_id` for answer failures); the connection stays open |
+
+### Server recognition: when is the question over?
+
+Silence is measured on the audio clock (samples received). At each pause (≥ 120 ms) the recogniser
+is flushed, so the whole question, look-ahead included, is judged by the end-of-turn rules
+(app/voice/endpointing.py); the turn ends when the silence reaches that verdict's wait (300 /
+550 / 900 / 1,600 ms). Misheard district and scheme names are corrected first
+(app/voice/vocabulary.py: "Vid, awada" → "Vijayawada"). While an answer is being heard, speech
+that turns into two or more words that do not follow what is being said (echo) stops it.
 
 ### Partial-transcript strategy
 
@@ -197,6 +245,13 @@ websocat ws://localhost:8000/ws/voice
 {"type":"final","text":"What healthcare initiatives are proposed for Vijayawada?","turn_id":"t1"}
 ```
 
+```bash
+# Server recognition: start, stream PCM16, the server answers on its own (see eval/run_speech_eval.py)
+{"type":"start","speech":{"input":"server","output":"server"}}
+{"type":"audio_start"}
+<binary PCM16 frames…>
+```
+
 ## POST /transcribe
 
 `multipart/form-data`: `file` (webm / ogg / wav / mp3 / m4a, up to `MAX_AUDIO_MB` = 10),
@@ -214,14 +269,17 @@ prompt, with district names, so proper nouns are spelled right).
 `status`: `ok`, `degraded` (no LLM key, or no documents) or `down` (vector store unreachable).
 `components`: `vector_store`, `embedder` (model, dimension, query-cache hits), `llm` (provider, model,
 model check, fallback), `reranker`, `bm25`, `documents` (per campaign, failed count), `ocr`, `voice`
-(socket path, server transcription, speculation settings), `index_consistency` (chunks from another
-embedding model, startup reconciliation). `config` echoes the active retrieval settings.
+(socket path, server transcription, `server_speech` {stt, tts, vad} status, speculation and
+endpointing settings), `index_consistency` (chunks from another embedding model, startup
+reconciliation). `config` echoes the active retrieval settings.
 
 ## GET /metrics
 
-Rolling window (`METRICS_WINDOW`, 500) per endpoint: `query`, `query_stream`, `retrieve`, `voice`.
-Each stage has `n`, `p50`, `p90`, `p95`, `max` in milliseconds. The `voice` entry tracks
-`final_to_first_token` and `retrieval_saved`.
+Rolling window (`METRICS_WINDOW`, 500) per endpoint: `query`, `query_stream`, `retrieve`, `voice`,
+`voice_audio`. Each stage has `n`, `p50`, `p90`, `p95`, `max` in milliseconds. `voice` tracks
+`final_to_first_token` and `retrieval_saved`; `voice_audio` (server voice) tracks
+`final_to_first_audio_ms`, `first_synth_ms`, `endpoint_wait_ms`, `stt_final_ms` and
+`last_voice_to_first_audio_ms`.
 
 ## Configuration
 
@@ -233,5 +291,16 @@ All settings are environment variables (see `.env.example`). The voice-specific 
 | `VOICE_STABLE_MS` | 500 | S2: transcript stable this long |
 | `VOICE_MIN_WORDS` | 3 | S0 threshold |
 | `VOICE_WORD_STEP` | 3 | S1: re-search after this many new words |
-| `STT_MODEL` | `whisper-large-v3-turbo` (Groq) / `whisper-1` (OpenAI) | `/transcribe` model |
+| `VOICE_ADAPTIVE_ENDPOINTING` | `true` | end-of-turn verdicts (`endpoint` events, server recognition) |
+| `VOICE_ENDPOINT_COMPLETE_MS` / `_LIKELY_MS` / `_UNSURE_MS` / `_INCOMPLETE_MS` | 300 / 550 / 900 / 1600 | silence that ends a question, per verdict |
+| `STT_PROVIDER` | `none` (`local` in Docker) | `local` (sherpa-onnx), `deepgram`, `whisper` |
+| `TTS_PROVIDER` | `none` (`local` in Docker) | `local` (Piper / Kokoro via sherpa-onnx), `deepgram`, `openai`, `elevenlabs` |
+| `STT_MODEL` | `whisper-large-v3-turbo` (Groq) / `whisper-1` (OpenAI) / `nova-3` (Deepgram) | recognition model |
+| `STT_LOCAL_MODEL_DIR` / `TTS_LOCAL_MODEL_DIR` | `MODEL_CACHE_DIR/stt`, `/tts` | sherpa-onnx models (`scripts/download_models.py --speech`) |
+| `STT_BASE_URL`, `STT_API_KEY` | – | Whisper on a self-hosted OpenAI-compatible server |
+| `STT_PARTIAL_INTERVAL_MS` | 1500 | Whisper: re-transcribe this often while the user talks |
+| `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY` | – | cloud speech providers |
+| `TTS_VOICE`, `TTS_MODEL`, `TTS_BASE_URL`, `TTS_API_KEY`, `TTS_RESPONSE_FORMAT` | – | voice / model / self-hosted endpoint for the TTS provider |
+| `VAD_MODEL` | `MODEL_CACHE_DIR/vad/silero_vad.onnx` if present | Silero VAD; otherwise an energy detector |
+| `CITATION_VERIFICATION` | `flag` | `off`, `flag`, `strict` (see `POST /query`) |
 | `MAX_AUDIO_MB` | 10 | `/transcribe` upload limit |

@@ -89,6 +89,9 @@ class Settings(BaseSettings):
     llm_timeout_s: float = 20.0
     llm_max_tokens: int = 300
     llm_temperature: float = 0.1
+    # Claim-level citation check (app/generation/verify.py): off | flag (mark unsupported sentences
+    # and fix misattributed citations) | strict (also drop unsupported sentences from the answer).
+    citation_verification: Literal["off", "flag", "strict"] = "flag"
 
     # ── Voice ────────────────────────────────────────────────────────────
     # Partial-transcript controller (WS /ws/voice): see app/voice/controller.py.
@@ -96,9 +99,34 @@ class Settings(BaseSettings):
     voice_stable_ms: int = 500     # S2: transcript unchanged this long → rerank ahead of the final
     voice_min_words: int = 3       # S0: shorter partials are ignored
     voice_word_step: int = 3       # S1: re-search after this many new words (or a new district/topic/entity)
+    # End-of-turn detection (app/voice/endpointing.py): how long a silence ends the turn, by how
+    # finished the transcript sounds. "unsure" is the old fixed timeout.
+    voice_adaptive_endpointing: bool = True
+    voice_endpoint_complete_ms: int = Field(default=300, ge=100, le=3000)
+    voice_endpoint_likely_ms: int = Field(default=550, ge=100, le=3000)
+    voice_endpoint_unsure_ms: int = Field(default=900, ge=100, le=5000)
+    voice_endpoint_incomplete_ms: int = Field(default=1600, ge=100, le=8000)
     # Server-side speech-to-text (/transcribe) for browsers without the Web Speech API.
-    stt_model: str = ""            # default: whisper-large-v3-turbo (Groq) / whisper-1 (OpenAI)
+    stt_model: str = ""            # default: whisper-large-v3-turbo (Groq) / whisper-1 (OpenAI) / nova-3 (Deepgram)
     max_audio_mb: int = 10
+
+    # ── Server-side speech (microphone audio and spoken answers over /ws/voice) ──
+    # none = the browser recognises and speaks (Web Speech API). See app/voice/stt.py and tts.py.
+    stt_provider: Literal["none", "local", "deepgram", "whisper"] = "none"
+    stt_local_model_dir: str = ""   # sherpa-onnx streaming model; default MODEL_CACHE_DIR/stt (scripts/download_models.py --speech)
+    stt_partial_interval_ms: int = 1500  # whisper: re-transcribe this often while the user talks (0: only at pauses)
+    stt_base_url: str = ""          # whisper: a self-hosted OpenAI-compatible server instead of the LLM provider
+    stt_api_key: str = ""
+    deepgram_api_key: str = ""
+    tts_provider: Literal["none", "local", "deepgram", "openai", "elevenlabs"] = "none"
+    tts_local_model_dir: str = ""   # sherpa-onnx Piper/Kokoro voice; default MODEL_CACHE_DIR/tts
+    tts_voice: str = ""             # local: speaker number · deepgram: Aura model · openai: voice · elevenlabs: voice id
+    tts_model: str = ""             # openai: gpt-4o-mini-tts · elevenlabs: eleven_flash_v2_5
+    tts_base_url: str = ""          # openai provider: a self-hosted OpenAI-compatible server
+    tts_api_key: str = ""
+    tts_response_format: Literal["pcm", "wav"] = "pcm"
+    elevenlabs_api_key: str = ""
+    vad_model: str = ""             # silero_vad.onnx; default MODEL_CACHE_DIR/vad/silero_vad.onnx if present, else energy VAD
 
     # ── API / observability ──────────────────────────────────────────────
     # Optional shared secret. When set, write endpoints (/upload, DELETE /documents/*)
@@ -126,6 +154,19 @@ class Settings(BaseSettings):
         if self.embedding_model == "BAAI/bge-small-en-v1.5" and (local / "tokenizer.json").exists():
             return str(local)
         return ""
+
+    @property
+    def resolved_stt_model_dir(self) -> str:
+        return self.stt_local_model_dir or str(self.model_cache_dir / "stt")
+
+    @property
+    def resolved_tts_model_dir(self) -> str:
+        return self.tts_local_model_dir or str(self.model_cache_dir / "tts")
+
+    @property
+    def resolved_vad_model(self) -> str:
+        default = self.model_cache_dir / "vad" / "silero_vad.onnx"
+        return self.vad_model or (str(default) if default.exists() else "")
 
     @property
     def qdrant_path(self) -> Path:
