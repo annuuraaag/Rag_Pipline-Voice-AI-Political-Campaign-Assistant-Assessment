@@ -269,6 +269,8 @@ Example: the user says *"I'm from Vijayawada"*, then *"what about new hospitals?
 - *"What is planned for chilli farmers in Guntur?"*
 - *"What is the campaign's policy on lunar mining?"* (correctly refused)
 
+**Recording a demo?** [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) is a 6-minute scene-by-scene script, including a live upload of `sample_data/demo/nellore_coastal_plan.pdf` (not preloaded).
+
 ---
 
 ## API
