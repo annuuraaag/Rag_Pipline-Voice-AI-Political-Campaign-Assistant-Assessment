@@ -375,7 +375,7 @@ function LiveBar({ voice, assistant }) {
       {phase === "speaking" && (
         <>
           <span className="eq" aria-hidden><i /><i /><i /><i /></span>
-          <span className="livebar-text">Speaking<span className="hide-sm"> · tap the mic or start talking to interrupt</span></span>
+          <span className="livebar-text">Speaking<span className="hide-sm"> · {voice.listeningOver ? "tap the mic or start talking to interrupt" : "tap the mic to interrupt"}</span></span>
           <button className="btn btn-ghost btn-sm" onClick={() => assistant.interrupt()}><Square size={12} aria-hidden /> Stop</button>
         </>
       )}

@@ -34,9 +34,9 @@ const browser = await chromium.launch({
     `--use-file-for-fake-audio-capture=${WAV}%noloop`, "--autoplay-policy=no-user-gesture-required"],
 });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, permissions: ["microphone"] });
-// Server recognition and the server voice, in conversation mode (the mic stays open for barge-in).
+// Server recognition and the server voice, default settings: talking over an answer interrupts it.
 await context.addInitScript(() => {
-  localStorage.setItem("crag-settings", JSON.stringify({ speechInput: "server", speechOutput: "server", handsFree: true }));
+  localStorage.setItem("crag-settings", JSON.stringify({ speechInput: "server", speechOutput: "server" }));
   window.__audio = { frames: 0, stopped: 0 };
   const stop = AudioBufferSourceNode.prototype.stop;
   AudioBufferSourceNode.prototype.stop = function (...args) {

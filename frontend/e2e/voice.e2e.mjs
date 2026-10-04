@@ -20,27 +20,42 @@ if (SHOTS) mkdirSync(SHOTS, { recursive: true });
 const FAKE_VOICE = () => {
   // Browser recognition and the browser voice, even if the server also offers speech (see server-speech.e2e.mjs).
   if (!localStorage.getItem("crag-settings")) localStorage.setItem("crag-settings", JSON.stringify({ speechInput: "browser", speechOutput: "browser" }));
-  window.__voice = { next: "", spoken: [], cancels: 0, msPerChar: 12 };
+  window.__voice = { next: "", queue: [], edge: false, spoken: [], cancels: 0, msPerChar: 12 };
+  // One scripted session per start(): it says `__voice.next` (once), then stays open like Chrome's
+  // continuous mode. `__voice.active.emit(text)` makes the running session hear more words later
+  // (the answer's echo, or the user talking over it), as a new result of the same session.
   class FakeRecognition {
     start() {
-      const words = window.__voice.next.split(" ").filter(Boolean);
-      let i = 0;
-      setTimeout(() => { this.onstart?.(); this.onspeechstart?.(); }, 30);
-      this._t = setInterval(() => {
-        i += 1;
-        if (i <= words.length) {
-          const r = Object.assign([{ transcript: words.slice(0, i).join(" ") }], { isFinal: false });
-          this.onresult?.({ resultIndex: 0, results: [r] });
-        } else {
-          clearInterval(this._t);
-          const r = Object.assign([{ transcript: words.join(" ") }], { isFinal: true });
-          this.onresult?.({ resultIndex: 0, results: [r] });
-          this.onspeechend?.();
-        }
-      }, 140);
+      window.__voice.active = this;
+      this.results = [];
+      this.timers = [];
+      setTimeout(() => this.onstart?.(), 30);
+      const text = window.__voice.next || window.__voice.queue.shift() || "";
+      window.__voice.next = "";
+      if (text) this.emit(text);
     }
-    stop() { clearInterval(this._t); setTimeout(() => this.onend?.(), 10); }
-    abort() { clearInterval(this._t); setTimeout(() => this.onend?.(), 10); }
+    emit(text, msPerWord = 140) {
+      const words = text.split(" ").filter(Boolean);
+      const idx = this.results.length;
+      this.results.push(Object.assign([{ transcript: "" }], { isFinal: false }));
+      this.onspeechstart?.();
+      let i = 0;
+      const t = setInterval(() => {
+        i += 1;
+        const final = i > words.length;
+        this.results[idx] = Object.assign([{ transcript: words.slice(0, i).join(" ") }], { isFinal: final });
+        this.onresult?.({ resultIndex: idx, results: this.results.slice() });
+        if (final) {
+          clearInterval(t);
+          this.onspeechend?.();
+          // Edge's speech service ends a "continuous" session on its own after a short pause.
+          if (window.__voice.edge) this.timers.push(setTimeout(() => this.onend?.(), 500));
+        }
+      }, msPerWord);
+      this.timers.push(t);
+    }
+    stop() { this.timers.forEach(clearInterval); setTimeout(() => this.onend?.(), 10); }
+    abort() { this.timers.forEach(clearInterval); setTimeout(() => this.onend?.(), 10); }
   }
   window.SpeechRecognition = FakeRecognition;
   window.webkitSpeechRecognition = FakeRecognition;
@@ -157,6 +172,56 @@ try {
   check("barge-in takes the new question and keeps the earlier answer", /pratibha/i.test(lastQ) && third.length > 20, lastQ.trim());
   await page.evaluate(() => { window.__voice.msPerChar = 12; });
   await shot("07-barge-in");
+
+  // ── 4b. barge-in by speaking, with the answer's echo in the microphone ─
+  await page.waitForFunction(() => !document.querySelector(".livebar-speaking"), null, { timeout: 30000 });
+  await page.evaluate(() => { window.__voice.msPerChar = 60; window.__voice.next = "what healthcare schemes are there in guntur"; });
+  const usersBefore = await page.$$eval(".msg-user", (els) => els.length);
+  await page.click(".mic");
+  await page.waitForSelector(".livebar-speaking", { timeout: 25000 });
+  await page.waitForFunction(() => /start talking to interrupt/.test(document.querySelector(".livebar")?.textContent || ""), null, { timeout: 3000 })
+    .catch(() => {});
+  check("speaking bar invites talking to interrupt", /start talking to interrupt/.test(await page.textContent(".livebar")));
+  // Laptop speakers: the recognizer hears the answer itself. That must not interrupt it.
+  const echo = () => window.__voice.spoken.at(-1).replace(/[^\w\s']/g, " ").split(/\s+/).filter(Boolean).slice(0, 12).join(" ");
+  const echoed = await page.evaluate((src) => { const e = (0, eval)(src)(); window.__voice.active.emit(e, 60); return e; }, `(${echo})`);
+  await page.waitForTimeout(12 * 60 + 1500);
+  const stillSpeaking = Boolean(await page.$(".livebar-speaking"));
+  check("the answer's own echo does not interrupt it", stillSpeaking && (await page.$$eval(".msg-user", (els) => els.length)) === usersBefore + 1,
+    echoed);
+  // More echo, then the user talks over it before any pause: only the user's words count.
+  const cancels2 = await page.evaluate(() => window.__voice.cancels);
+  await page.evaluate((src) => {
+    const v = window.__voice;
+    v.active.emit((0, eval)(src)(), 50);
+    setTimeout(() => v.active.emit("what about education in vijayawada"), 12 * 50 + 250);
+  }, `(${echo})`);
+  await page.waitForFunction((n) => document.querySelectorAll(".msg-user").length >= n, usersBefore + 2, { timeout: 15000 });
+  const spokenQ = (await page.$$eval(".msg-user .bubble", (els) => els[els.length - 1].textContent)).trim();
+  check("talking over the answer stops it and asks the new question",
+    (await page.evaluate(() => window.__voice.cancels)) > cancels2 && /^What about education in vijayawada\?$/i.test(spokenQ), spokenQ);
+  await shot("07b-spoken-barge-in");
+  // "Stop" only stops the answer.
+  await page.waitForSelector(".livebar-speaking", { timeout: 25000 });
+  const usersNow = await page.$$eval(".msg-user", (els) => els.length);
+  await page.waitForFunction(() => /start talking/.test(document.querySelector(".livebar")?.textContent || ""), null, { timeout: 3000 }).catch(() => {});
+  await page.evaluate(() => window.__voice.active.emit("stop"));
+  const stopped = await page.waitForFunction(() => !document.querySelector(".livebar-speaking") && !document.querySelector(".livebar-listening"),
+    null, { timeout: 5000 }).then(() => true).catch(() => false);
+  check("saying “stop” stops the answer without asking anything", stopped && (await page.$$eval(".msg-user", (els) => els.length)) === usersNow);
+  await page.evaluate(() => { window.__voice.msPerChar = 12; });
+
+  // ── 4c. a browser that ends the session at a pause (Edge) ────────────
+  await page.waitForFunction(() => !document.querySelector(".livebar-speaking") && !document.querySelector(".livebar-listening"), null, { timeout: 30000 });
+  await page.evaluate(() => {
+    Object.assign(window.__voice, { edge: true, queue: ["what healthcare initiatives are proposed for", "vijayawada"] });
+  });
+  await page.click(".mic");
+  await page.waitForFunction((n) => document.querySelectorAll(".msg-user").length > n, usersNow, { timeout: 10000 });
+  const edgeQ = (await page.$$eval(".msg-user .bubble", (els) => els[els.length - 1].textContent)).trim();
+  check("a pause that ends the browser's session doesn't cut the question", /^What healthcare initiatives are proposed for vijayawada\?$/i.test(edgeQ), edgeQ);
+  await page.evaluate(() => { window.__voice.edge = false; window.__voice.queue = []; });
+  await page.waitForSelector(".msg-assistant:last-child .msg-meta", { timeout: 20000 }).catch(() => {});
 
   // ── 5. other pages, dark mode, mobile ────────────────────────────────
   await page.click("a[href='#/knowledge']");

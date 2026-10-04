@@ -1,10 +1,17 @@
 // Microphone access: a level meter for the voice orb, and a recorder with simple voice-activity
 // detection for browsers without the Web Speech API (the clip is sent to POST /transcribe).
 
-export async function openMic() {
+/**
+ * processing: echo cancellation, noise suppression and automatic gain, for audio that is
+ * recognised from this stream (server recognition). When the browser recognises speech it opens
+ * the microphone itself and this stream only drives the level meter: then it is opened raw,
+ * because on Windows and macOS Chrome/Edge's automatic gain changes the system microphone level
+ * (which the browser's recognizer hears too) and voice processing can turn other audio down.
+ */
+export async function openMic({ processing = true } = {}) {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error("This browser cannot access a microphone.");
   const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    audio: { echoCancellation: processing, noiseSuppression: processing, autoGainControl: processing },
   });
   const Ctx = window.AudioContext || window.webkitAudioContext;
   const ctx = new Ctx();

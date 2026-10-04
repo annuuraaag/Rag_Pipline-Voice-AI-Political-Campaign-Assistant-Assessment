@@ -91,8 +91,11 @@ export default function SettingsDialog({ open, onClose, health }) {
         </Field>
         <Toggle checked={settings.autoSpeak} onChange={(v) => update({ autoSpeak: v })} label="Speak answers aloud"
                 description="Answers to spoken questions are read out as they are written." />
+        <Toggle checked={settings.bargeIn || settings.handsFree} disabled={settings.handsFree}
+                onChange={(v) => update({ bargeIn: v })} label="Interrupt by speaking"
+                description="Start talking while an answer is read out to stop it and ask something else. “Stop” just stops it. With laptop speakers, speak clearly over the voice; headphones work best." />
         <Toggle checked={settings.handsFree} onChange={(v) => update({ handsFree: v })} label="Conversation mode"
-                description="Keeps listening after each answer, and you can interrupt by speaking. Headphones work best." />
+                description="Keeps listening after each answer, so you can ask the next question without tapping the mic." />
       </div>
 
       <div className="settings-section">

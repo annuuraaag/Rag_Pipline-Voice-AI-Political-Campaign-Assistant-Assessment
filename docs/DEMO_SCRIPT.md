@@ -54,7 +54,7 @@ To rebuild it, run `python scripts/build_demo_doc.py`.
 **Say:**
 > "I didn't repeat the district. It remembers I'm in Vijayawada and rewrites the question."
 
-**Do:** Turn on **Conversation mode** (Settings) if it's off. Ask *"Who is eligible for the Pratibha
+**Do:** Ask *"Who is eligible for the Pratibha
 Scholarship?"* While it's speaking the answer, talk over it: *"What is planned for chilli farmers
 in Guntur?"*
 
@@ -136,4 +136,4 @@ Server), and **Smart end-of-question detection**.
 | The first answer is slow | Do a warm-up question before recording (see checklist). |
 | The upload says "duplicate" | The PDF is already indexed. Delete it in Knowledge base and upload again. |
 | Answers read like copied text | `GROQ_API_KEY` is missing. Add it to `.env` and restart. |
-| Interrupting doesn't work | Turn on **Conversation mode** and use a headset, so the mic doesn't hear the speaker. |
+| Interrupting by voice doesn't work | Check **Interrupt by speaking** is on (Settings). With laptop speakers, speak a full question (3+ words) clearly over the voice, or use a headset. |
