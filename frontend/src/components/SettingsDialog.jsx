@@ -13,8 +13,20 @@ const LANGS = [
 ];
 const preview = new SentenceSpeaker();
 
-export default function SettingsDialog({ open, onClose }) {
+// "local/stt" → "On this server (stt)"; "disabled (...)" / "unavailable: ..." → null
+function serverSpeech(status) {
+  if (!status || /^(disabled|unavailable)/.test(status)) return null;
+  const [provider, ...rest] = status.split("/");
+  const what = rest.join("/");
+  return provider === "local" ? `On this server${what ? ` · ${what}` : ""}` : `${provider[0].toUpperCase()}${provider.slice(1)}${what ? ` · ${what}` : ""}`;
+}
+
+export default function SettingsDialog({ open, onClose, health }) {
   const { settings, update } = useSettings();
+  const speech = health?.components?.voice?.server_speech || {};
+  const serverStt = serverSpeech(speech.stt);
+  const serverTts = serverSpeech(speech.tts);
+  const browserVoice = settings.speechOutput === "browser" || !serverTts;
   const [voices, setVoices] = useState(listVoices);
   const [key, setKey] = useState(getApiKey);
   useEffect(() => {
@@ -40,7 +52,25 @@ export default function SettingsDialog({ open, onClose }) {
         <Field label="Recognition language" hint="Indian English recognises local place names best.">
           <Select value={settings.lang} onChange={(v) => update({ lang: v })} options={LANGS} />
         </Field>
-        {ttsSupported && (
+        {serverStt && (
+          <Field label="Speech recognition"
+                 hint={settings.speechInput === "server" || (!speechRecognitionSupported && settings.speechInput !== "browser")
+                   ? "Your voice is streamed to this server and recognised there; it never goes to a browser vendor."
+                   : "The browser recognises speech (Chrome sends audio to Google). The server option keeps audio on this server."}>
+            <Select value={settings.speechInput} onChange={(v) => update({ speechInput: v })}
+                    options={[{ value: "auto", label: speechRecognitionSupported ? "Automatic (browser)" : "Automatic (server)" },
+                      ...(speechRecognitionSupported ? [{ value: "browser", label: "In the browser" }] : []),
+                      { value: "server", label: serverStt }]} />
+          </Field>
+        )}
+        {serverTts && (
+          <Field label="Answer voice" hint="The server voice sounds the same in every browser and is streamed as it is generated.">
+            <Select value={settings.speechOutput} onChange={(v) => update({ speechOutput: v })}
+                    options={[{ value: "auto", label: "Automatic (server voice)" }, { value: "server", label: serverTts },
+                      ...(ttsSupported ? [{ value: "browser", label: "Browser voice" }] : [])]} />
+          </Field>
+        )}
+        {ttsSupported && browserVoice && (
           <Field label="Assistant voice">
             <div className="row">
               <Select className="grow" value={settings.voiceURI} onChange={(v) => update({ voiceURI: v })}

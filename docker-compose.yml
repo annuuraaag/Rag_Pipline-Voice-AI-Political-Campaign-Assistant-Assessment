@@ -21,12 +21,17 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      args:
+        SPEECH_MODELS: ${SPEECH_MODELS:-true}   # bake the local speech models into the image
     env_file:
       - path: .env
         required: false
     environment:
       QDRANT_URL: http://qdrant:6333
       SEED_SAMPLE_DATA: ${SEED_SAMPLE_DATA:-true}
+      # Server-side speech on CPU by default; set to none to leave speech to the browser.
+      STT_PROVIDER: ${STT_PROVIDER:-local}
+      TTS_PROVIDER: ${TTS_PROVIDER:-local}
     ports:
       - "127.0.0.1:8000:8000"
     volumes:

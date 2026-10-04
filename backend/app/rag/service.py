@@ -27,7 +27,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.conversation.rewriter import LLMRewriter, Rewrite, rewrite_with_rules
 from app.conversation.state import ConversationState, SessionStore
-from app.domain import DEFAULT_CAMPAIGN, MetadataFilter
+from app.domain import DEFAULT_CAMPAIGN, MetadataFilter, ScoredChunk
 from app.generation.citations import Citation, finalize_answer, is_refusal
 from app.generation.llm.base import Grounding, LLMError, LLMProvider
 from app.generation.llm.extractive import ExtractiveLLM
@@ -262,12 +262,17 @@ class RAGService:
     async def stream(self, query: str, filters: MetadataFilter | None = None, top_k: int | None = None,
                      threshold: float | None = None, request_id: str | None = None,
                      session_id: str | None = None, campaign_id: str | None = None,
-                     reuse: Reuse | None = None) -> AsyncIterator[dict[str, Any]]:
+                     reuse: Reuse | None = None, sources_out: list[ScoredChunk] | None = None
+                     ) -> AsyncIterator[dict[str, Any]]:
+        """`sources_out`, if given, receives the passages the answer is grounded in (for checking
+        sentences before they are spoken)."""
         # The caller may supply the id so its error handler can log and report the same one.
         request_id = request_id or uuid.uuid4().hex[:12]
         timer = StageTimer()
         p = await self.prepare(query, session_id, filters, top_k, threshold, timer, commit=True,
                                campaign_id=campaign_id, reuse=reuse)
+        if sources_out is not None:
+            sources_out.extend(p.retrieval.results)
         yield {"type": "retrieval", "request_id": request_id, "retrieval": self.trace(p).model_dump(),
                "latency_ms": timer.as_dict(), "cache": p.cache}
 

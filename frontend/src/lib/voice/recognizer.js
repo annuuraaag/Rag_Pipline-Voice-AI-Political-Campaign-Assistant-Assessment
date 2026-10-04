@@ -49,6 +49,7 @@ export function createRecognizer({ lang = "en-IN", endSilenceMs = 900, noSpeechM
   let silenceTimer = null;
   let noSpeechTimer = null;
   let lastResultAt = 0;
+  let hinted = null; // { text, waitMs }: the server's verdict on these exact words
 
   const text = () => `${finals} ${interim}`.replace(/\s+/g, " ").trim();
   const clearTimers = () => { clearTimeout(silenceTimer); clearTimeout(noSpeechTimer); };
@@ -85,8 +86,14 @@ export function createRecognizer({ lang = "en-IN", endSilenceMs = 900, noSpeechM
     if (!t) return;
     clearTimeout(noSpeechTimer);
     lastResultAt = performance.now();
-    // Wait a little longer while words are still provisional: Chrome may yet revise them.
-    armSilence(interim.trim() ? endSilenceMs + 400 : endSilenceMs);
+    if (hinted && hinted.text === norm(t)) {
+      // Same words as the last verdict (typically the final result repeating the interim one):
+      // the server sends no new hint for them, so keep that one.
+      armSilence(hinted.waitMs + (interim.trim() ? 150 : 0));
+    } else {
+      // Wait a little longer while words are still provisional: Chrome may yet revise them.
+      armSilence(interim.trim() ? endSilenceMs + 400 : endSilenceMs);
+    }
     onPartial?.(t);
   };
   rec.onerror = (event) => {
@@ -102,7 +109,7 @@ export function createRecognizer({ lang = "en-IN", endSilenceMs = 900, noSpeechM
 
   return {
     start() {
-      finals = ""; interim = ""; finished = false;
+      finals = ""; interim = ""; finished = false; hinted = null;
       rec.start();
     },
     /** User pressed stop: treat what we have as the final transcript. */
@@ -119,8 +126,8 @@ export function createRecognizer({ lang = "en-IN", endSilenceMs = 900, noSpeechM
       const now = norm(text());
       const heard = norm(forText || "");
       if (finished || !heard || !now.endsWith(heard)) return false;
-      const provisional = interim.trim() ? 150 : 0;
-      armSilence(waitMs + provisional - (performance.now() - lastResultAt));
+      hinted = { text: now, waitMs };
+      armSilence(waitMs + (interim.trim() ? 150 : 0) - (performance.now() - lastResultAt));
       return true;
     },
     get running() { return running; },

@@ -25,7 +25,11 @@ from app.retrieval.embedder import Embedder, FastEmbedder
 from app.retrieval.pipeline import Retriever
 from app.retrieval.reranker import Reranker, load_reranker
 from app.retrieval.vector_store import QdrantStore
+from app.voice.stt import STTProvider, build_stt
 from app.voice.transcriber import Transcriber, WhisperTranscriber
+from app.voice.tts import TTSProvider, build_tts
+from app.voice.vad import VADFactory
+from app.voice.vocabulary import VocabularyCache
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +52,21 @@ class Container:
     started_at: float = field(default_factory=time.time)
     startup_timings_ms: dict[str, float] = field(default_factory=dict)
     transcriber: Transcriber | None = None
+    stt: STTProvider | None = None          # server-side speech (app/voice/speech.py)
+    tts: TTSProvider | None = None
+    vad: VADFactory = field(default_factory=VADFactory)
+    speech_status: dict[str, str] = field(default_factory=dict)
+    vocabulary: VocabularyCache | None = None   # per-campaign name corrector for server transcripts
+
+    def __post_init__(self) -> None:
+        if self.vocabulary is None:
+            self.vocabulary = VocabularyCache(self.store, lambda: self.ingestion.revision)
 
 
 def build_transcriber(s: Settings) -> Transcriber | None:
-    """Whisper via the LLM provider's OpenAI-compatible API, when it has one and a key."""
+    """Whisper via STT_BASE_URL (self-hosted), else the LLM provider's OpenAI-compatible API with its key."""
+    if s.stt_base_url:
+        return WhisperTranscriber("whisper", s.stt_base_url, s.stt_api_key, model=s.stt_model or "whisper-1")
     if s.llm_provider not in ("groq", "openai") or not s.llm_api_key:
         return None
     model = s.stt_model or ("whisper-large-v3-turbo" if s.llm_provider == "groq" else "whisper-1")
@@ -128,9 +143,16 @@ def build_container(
     rag = RAGService(retriever, llm, metrics, sessions=sessions, llm_rewriter=rewriter,
                      log_query_text=s.log_query_text, verifier=verifier, verify_policy=s.citation_verification)
     rag.default_campaign = s.default_campaign_id
+    transcriber = build_transcriber(s)
+    t = time.perf_counter()
+    stt, stt_status = build_stt(s, transcriber)
+    tts, tts_status = build_tts(s)
+    vad = VADFactory(s.resolved_vad_model)
+    timings["load_speech"] = round((time.perf_counter() - t) * 1000, 1)
     return Container(s, embedder, store, registry, ingestion, retriever, llm, rag, metrics, sessions=sessions,
                      reranker_status=reranker_status, ocr=ocr, startup_report=report, startup_timings_ms=timings,
-                     transcriber=build_transcriber(s))
+                     transcriber=transcriber, stt=stt, tts=tts, vad=vad,
+                     speech_status={"stt": stt_status, "tts": tts_status, "vad": vad.name})
 
 
 def _wait_for(store: QdrantStore, attempts: int = 15, delay_s: float = 2.0) -> None:

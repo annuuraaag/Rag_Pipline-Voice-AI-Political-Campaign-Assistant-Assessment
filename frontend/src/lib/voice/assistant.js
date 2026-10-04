@@ -8,8 +8,15 @@
 // output at once, cancels the server-side answer, and starts listening. In conversation mode
 // the recognizer keeps running while the assistant talks, so its own voice can be picked up;
 // transcripts that mostly repeat what was just said aloud are treated as echo and ignored.
+//
+// Speech can be recognised and spoken in the browser (Web Speech API) or on the server:
+//   input "server"   the microphone streams 16 kHz PCM over the socket; the server recognises,
+//                    decides when the question is over, starts the answer (an `utterance` event)
+//                    and, in conversation mode, detects barge-in itself (a `barge_in` event).
+//   output "server"  the answer arrives as audio frames, played as they come (pcm.js).
 
 import { openMic, micErrorMessage, recordUtterance } from "./mic.js";
+import { PcmPlayer, pcmCaptureSupported, startPcmCapture } from "./pcm.js";
 import { createRecognizer, speechRecognitionSupported, tidyTranscript } from "./recognizer.js";
 import { SentenceSpeaker, pickVoice, ttsSupported } from "./tts.js";
 import { VoiceSocket, voiceSocketUrl } from "./socket.js";
@@ -25,13 +32,17 @@ export function endpointWait(e, userMs) {
   return userMs;
 }
 
-/** True when `heard` is probably the assistant's own voice coming back through the mic. */
+/** True when `heard` is probably the assistant's own voice coming back through the mic: its words
+ *  follow what was said, in the same order. Word pairs, not single words, so a question that reuses
+ *  some of the answer's words ("who is eligible for …") still counts as the user talking. */
 export function isEcho(heard, spoken) {
   const w = words(heard);
   if (w.length < 2) return true; // one word ("ok", "the") is never a deliberate interruption
-  const pool = new Set(words(spoken));
-  if (!pool.size) return false;
-  return w.filter((x) => pool.has(x)).length / w.length >= 0.6;
+  const said = words(spoken);
+  if (said.length < 2) return false;
+  const pairs = new Set(said.slice(1).map((x, i) => `${said[i]} ${x}`));
+  const heardPairs = w.slice(1).map((x, i) => `${w[i]} ${x}`);
+  return heardPairs.filter((p) => pairs.has(p)).length / heardPairs.length >= 0.6;
 }
 
 export class VoiceAssistant {
@@ -47,12 +58,16 @@ export class VoiceAssistant {
     };
     this.turn = null;
     this.mic = null;
+    this.capture = null;
     this.rec = null;
     this.recording = null;
     this.config = null;
+    this.speechKey = null;
     this.speaker = new SentenceSpeaker({ onStart: (t) => this._firstAudio(t), onIdle: (t) => this._spoken(t) });
+    this.player = new PcmPlayer({ onStart: (t) => this._firstAudio(t), onIdle: (t) => this._spoken(t) });
     this.socket = new VoiceSocket(voiceSocketUrl(), {
       onEvent: (e) => this._onEvent(e),
+      onAudio: (frame) => this._onAudio(frame),
       onStatus: (s) => this._set({ socket: s, server: this.socket?.info ?? this.state.server }),
     });
   }
@@ -67,15 +82,45 @@ export class VoiceAssistant {
 
   level = () => (this.mic ? this.mic.level() : 0);
 
+  /** How speech is recognised: "server" | "webspeech" | "recorder" (clip → /transcribe) | "none". */
   get mode() {
-    if (speechRecognitionSupported) return "webspeech";
+    const pref = this.getSettings().speechInput || "auto";
+    const server = Boolean(this.state.server?.speech?.stt) && pcmCaptureSupported && this.socket.open;
+    if (pref === "server" && server) return "server";
+    if (pref !== "server" && speechRecognitionSupported) return "webspeech";
+    if (server) return "server";
     if (typeof window !== "undefined" && window.MediaRecorder && this.state.server?.transcribe) return "recorder";
     return "none";
   }
 
+  /** Who speaks the answer: "server" (streamed audio) | "browser" (speechSynthesis) | "none". */
+  get output() {
+    const pref = this.getSettings().speechOutput || "auto";
+    const server = Boolean(this.state.server?.speech?.tts) && this.socket.open;
+    if (pref === "browser" && ttsSupported) return "browser";
+    if (server) return "server";
+    return ttsSupported ? "browser" : "none";
+  }
+
   configure(config) {
     this.config = config;
-    this.socket.configure(config);
+    this.speechKey = null;
+    this._syncSpeech();
+  }
+
+  /** Tell the server which side recognises and speaks (re-sent only when that changes). */
+  _syncSpeech() {
+    if (!this.config) return;
+    const s = this.getSettings();
+    const speech = {
+      input: this.mode === "server" ? "server" : "browser",
+      output: s.autoSpeak && this.output === "server" ? "server" : "browser",
+      rate: s.rate, language: s.lang,
+    };
+    const key = JSON.stringify(speech);
+    if (key === this.speechKey) return;
+    this.speechKey = key;
+    this.socket.configure({ ...this.config, speech });
   }
 
   dismiss() { this._set({ error: null, notice: null }); }
@@ -91,23 +136,28 @@ export class VoiceAssistant {
   async listen() {
     this.echoPool = null;
     this.speaker.unlock(); // inside the click/keypress: lets Safari speak later
-    if (this.mode === "none") {
+    this.player.unlock();
+    const mode = this.mode;
+    if (mode === "none") {
       this._set({ error: "Voice input needs Chrome, Edge or Safari (or a server speech-to-text key). You can still type." });
       return;
     }
     this._set({ error: null, notice: null, interim: "", speculative: null, endpoint: null, phase: "listening" });
     if (!(await this._ensureMic())) return;
-    if (this.mode === "webspeech") this._startRecognizer();
+    if (mode === "server") this._listenServer();
+    else if (mode === "webspeech") this._startRecognizer();
     else this._record();
   }
 
   stopListening() {
-    if (this.rec) this.rec.stop();
+    if (this.mode === "server" && this.capture) this.socket.send({ type: "audio_stop" });
+    else if (this.rec) this.rec.stop();
     else if (this.recording) this.recording.stop();
   }
 
   /** Stop talking / cancel the answer. With listen=true, start listening right away (barge-in). */
   interrupt({ listen = false } = {}) {
+    if (this.capture && this.state.phase === "listening") this.socket.send({ type: "audio_cancel" });
     this._cancelTurn();
     this.rec?.abort();
     this.rec = null;
@@ -122,6 +172,7 @@ export class VoiceAssistant {
   askText(text) {
     const q = text.trim();
     if (!q) return;
+    if (this.capture && this.state.phase === "listening") this.socket.send({ type: "audio_cancel" });
     this._cancelTurn();
     this.rec?.abort();
     this.rec = null;
@@ -165,8 +216,57 @@ export class VoiceAssistant {
   }
 
   _closeMic() {
+    this.capture?.stop();
+    this.capture = null;
     this.mic?.close();
     this.mic = null;
+  }
+
+  // ── server recognition ────────────────────────────────────────────
+  async _listenServer() {
+    this._syncSpeech();
+    this.socket.send({ type: "audio_start" });
+    if (this.capture || !this.mic) return;
+    try {
+      const mic = this.mic;
+      const capture = await startPcmCapture(mic.stream, (buf) => this.socket.sendBinary(buf));
+      if (this.mic === mic) this.capture = capture;
+      else capture.stop(); // the microphone was closed while the worklet loaded
+    } catch (err) {
+      this._closeMic();
+      this._set({ phase: "idle", error: `Could not stream the microphone to the server: ${err.message}` });
+    }
+  }
+
+  _onServerUtterance(e) {
+    if (this.state.phase !== "listening") return;
+    if (!e.text) {
+      this._closeMic();
+      this._set({ phase: "idle", interim: "", notice: "I didn't catch that. Tap the mic and try again." });
+      return;
+    }
+    // In conversation mode the microphone keeps streaming: the server listens for barge-in.
+    if (!this.getSettings().handsFree) this._closeMic();
+    this._set({ interim: "", endpoint: null });
+    this._submit(tidyTranscript(e.text, true), { voice: true, endpointMs: e.endpoint_ms, turnId: e.turn_id, started: true });
+  }
+
+  _onServerBargeIn(e) {
+    const t = this.turn;
+    if (t && e.turn_id === t.id) {
+      this.speaker.cancel();
+      this.player.cancel();
+      t.done = true;
+      this.dispatch({ type: "interrupted", turnId: t.id });
+      this.turn = null;
+    }
+    // The server already treats the interruption as the next question.
+    this._set({ phase: "listening", interim: "", speculative: null, error: null, notice: null });
+  }
+
+  _onAudio({ header, pcm }) {
+    const t = this.turn;
+    if (t && t.serverAudio && header.turn_id === t.id) this.player.push(t.id, header, pcm);
   }
 
   _startRecognizer() {
@@ -220,7 +320,7 @@ export class VoiceAssistant {
     const { phase } = this.state;
     if (phase === "thinking" || phase === "speaking") {
       // Conversation mode: the recognizer is live while the assistant answers.
-      const spoken = `${this.speaker.recentText()} ${this.turn?.text || ""}`;
+      const spoken = `${this.speaker.recentText()} ${this.player.recentText()} ${this.turn?.text || ""}`;
       if (isEcho(text, spoken)) return;
       this.echoPool = new Set(words(spoken)); // to trim echo picked up before the user cut in
       this._cancelTurn(); // the user is talking over the answer: stop and listen
@@ -269,18 +369,28 @@ export class VoiceAssistant {
   }
 
   // ── turns ─────────────────────────────────────────────────────────
-  _submit(text, { voice, endpointMs = null }) {
+  /** A question becomes a turn. `started`: the server already began answering it (server recognition). */
+  _submit(text, { voice, endpointMs = null, turnId = null, started = false }) {
     const s = this.getSettings();
-    const id = uid();
-    this.turn = { id, tFinal: performance.now(), voice, speak: voice && s.autoSpeak && ttsSupported, text: "", done: false };
+    if (!started) this._syncSpeech();
+    const id = turnId || uid();
+    const out = this.output;
+    const serverAudio = voice && s.autoSpeak && out === "server" && this.socket.open;
+    this.turn = {
+      id, tFinal: performance.now(), voice, text: "", done: false,
+      speak: voice && s.autoSpeak && out === "browser", serverAudio,
+    };
     this.dispatch({ type: "user", id: `${id}-q`, text, via: voice ? "voice" : "text" });
     this.dispatch({ type: "assistant", turnId: id, voice });
     if (endpointMs != null) this.dispatch({ type: "voice_metric", turnId: id, patch: { endpoint_wait_ms: endpointMs } });
     if (this.turn.speak) this.speaker.begin(id, { voice: pickVoice(s.lang, s.voiceURI), rate: s.rate, lang: s.lang });
+    if (serverAudio) this.player.begin(id);
     this._set({ phase: "thinking", speculative: null, interim: "" });
 
-    if (this.socket.open) {
-      this.socket.send({ type: "final", text, turn_id: id });
+    if (started) {
+      // nothing to send: the server is answering already
+    } else if (this.socket.open) {
+      this.socket.send({ type: "final", text, turn_id: id, speak: serverAudio });
     } else {
       // Socket down (proxy without WebSocket support, server restarting): same answer over SSE.
       this.fallbackAsk(text, (e) => this._onEvent({ ...e, turn_id: id })).catch((err) =>
@@ -300,6 +410,7 @@ export class VoiceAssistant {
   _cancelTurn() {
     const t = this.turn;
     this.speaker.cancel();
+    this.player.cancel();
     if (t && !t.done) {
       t.done = true;
       if (!t.replay) {
@@ -313,6 +424,7 @@ export class VoiceAssistant {
   _onEvent(e) {
     if (e.type === "ready") {
       this._set({ server: e });
+      this._syncSpeech(); // now that the server's speech providers are known
       return;
     }
     if (e.type === "speculative") {
@@ -320,10 +432,22 @@ export class VoiceAssistant {
       return;
     }
     if (e.type === "endpoint") {
-      if (this.state.phase !== "listening" || !this.rec) return;
-      const s = this.getSettings();
-      if (s.smartEndpointing !== false) this.rec.hint(e.text, endpointWait(e, s.endSilenceMs));
+      if (this.state.phase !== "listening") return;
       this._set({ endpoint: e });
+      const s = this.getSettings();
+      if (this.rec && s.smartEndpointing !== false) this.rec.hint(e.text, endpointWait(e, s.endSilenceMs));
+      return;
+    }
+    if (e.type === "transcript") {
+      if (this.state.phase === "listening") this._set({ interim: tidyTranscript(e.text) });
+      return;
+    }
+    if (e.type === "utterance") return this._onServerUtterance(e);
+    if (e.type === "barge_in") return this._onServerBargeIn(e);
+    if (e.type === "voice_metrics") {
+      // Server-side timings of the spoken answer (may arrive after the turn has finished playing).
+      const { type, turn_id: turnId, ...m } = e;
+      this.dispatch({ type: "voice_metric", turnId, patch: { server: m } });
       return;
     }
     const t = this.turn;
@@ -342,10 +466,16 @@ export class VoiceAssistant {
       t.done = true;
       this.dispatch({ type: "done", turnId: t.id, payload: e });
       if (t.speak) this.speaker.flush(t.id);
-      else this._finishTurn(t.id);
+      else if (!t.serverAudio) this._finishTurn(t.id); // server audio: finished when it has played
+    } else if (e.type === "audio_end") {
+      this.player.end(t.id);
+    } else if (e.type === "audio_error") {
+      this._set({ notice: "The server voice failed; the answer is shown as text." });
+      this.player.end(t.id);
     } else if (e.type === "error") {
       t.done = true;
       this.speaker.cancel();
+      this.player.cancel();
       this.dispatch({ type: "error", turnId: t.id, message: e.message });
       this._finishTurn(t.id);
     }
@@ -356,6 +486,8 @@ export class VoiceAssistant {
     if (!t || t.id !== turnId) return;
     if (!t.replay) {
       this.dispatch({ type: "voice_metric", turnId, patch: { first_audio_ms: Math.round(performance.now() - t.tFinal) } });
+      // While the answer is heard the server listens for barge-in (server recognition).
+      this.socket.send({ type: "playback", playing: true });
     }
     if (this.state.phase === "thinking") this._set({ phase: "speaking" });
   }
@@ -367,10 +499,11 @@ export class VoiceAssistant {
   _finishTurn(turnId) {
     if (this.turn?.id !== turnId) return;
     const voice = this.turn.voice;
+    if (!this.turn.replay) this.socket.send({ type: "playback", playing: false });
     this.turn = null;
     if (this.state.phase === "listening") return; // already taken over by a new utterance
     const s = this.getSettings();
-    if (voice && s.handsFree && this.mode === "webspeech") {
+    if (voice && s.handsFree && (this.mode === "webspeech" || this.mode === "server")) {
       // Fresh recognizer for the next question: the barge-in one may hold echo of the answer.
       this.rec?.abort();
       this.rec = null;

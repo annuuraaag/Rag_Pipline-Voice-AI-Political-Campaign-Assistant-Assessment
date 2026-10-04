@@ -274,6 +274,11 @@ function Latency({ message }) {
             {v.endpoint_wait_ms != null && (<><dt>Last word → end of question</dt><dd>{ms(v.endpoint_wait_ms)}</dd></>)}
             {v.final_to_first_token_ms != null && (<><dt>Final transcript → first token</dt><dd>{ms(v.final_to_first_token_ms)}</dd></>)}
             {v.first_audio_ms !== undefined && (<><dt>→ first spoken word</dt><dd>{ms(v.first_audio_ms)}</dd></>)}
+            {v.stt_final_ms != null && (<><dt>Final transcript (server)</dt><dd>{ms(v.stt_final_ms)}</dd></>)}
+            {v.server?.first_synth_ms != null && (<><dt>First sentence synthesised in</dt><dd>{ms(v.server.first_synth_ms)}</dd></>)}
+            {v.server?.last_voice_to_first_audio_ms != null && (
+              <><dt>Last word → first audio sent (server)</dt><dd>{ms(v.server.last_voice_to_first_audio_ms)}</dd></>)}
+            {v.server?.skipped_unverified > 0 && (<><dt>Sentences not spoken (unverified)</dt><dd>{v.server.skipped_unverified}</dd></>)}
             {v.partials !== undefined && (<><dt>Partial transcripts</dt><dd>{v.partials} received · {v.speculative_searches} searches · {v.speculative_refines} reranks</dd></>)}
           </dl>
         </section>

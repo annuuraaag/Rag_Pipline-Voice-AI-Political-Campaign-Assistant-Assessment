@@ -8,14 +8,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY backend/requirements.txt backend/requirements-ocr.txt ./
-RUN pip install -r requirements.txt && pip install --no-deps -r requirements-ocr.txt
+COPY backend/requirements.txt backend/requirements-ocr.txt backend/requirements-speech.txt ./
+RUN pip install -r requirements.txt && pip install --no-deps -r requirements-ocr.txt && pip install -r requirements-speech.txt
 
 # Bake the models into the image so containers start offline and fast: the embedder
 # (required) and the cross-encoder reranker (optional: if it can't be downloaded the
 # build continues and the app runs without reranking, reported in /health).
+# SPEECH_MODELS=true (default) adds the local speech-to-text, voice and VAD models (~140 MB);
+# without them the server reports no local speech and browsers recognise and speak themselves.
+ARG SPEECH_MODELS=true
 COPY scripts/download_models.py ./scripts/download_models.py
-RUN python scripts/download_models.py --dest /app/models
+RUN python scripts/download_models.py --dest /app/models $([ "$SPEECH_MODELS" = "true" ] && echo --speech)
 
 COPY backend/app ./app
 COPY sample_data ./sample_data

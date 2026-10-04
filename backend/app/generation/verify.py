@@ -262,6 +262,15 @@ class ClaimVerifier:
         return ClaimCheck(index=index, text=sentence, cited=cited, sources=cited, verdict="unsupported",
                           support=support, issues=issues)
 
+    def check_sentence(self, sentence: str, sources: list[ScoredChunk], question: str = "") -> ClaimCheck | None:
+        """One sentence as it streams (markers included), e.g. before it is spoken."""
+        claims = split_claims(sentence)
+        if not claims:
+            return None
+        evidence = [_evidence(i, c) for i, c in enumerate(sources, start=1)]
+        checks = [self.check(i, text, cited, evidence, terms(question)) for i, (text, cited) in enumerate(claims)]
+        return next((c for c in checks if c.verdict == "unsupported"), checks[0])
+
     def verify(self, answer: str, sources: list[ScoredChunk], question: str = "",
                policy: Policy = "flag") -> tuple[str, Verification]:
         """Check every sentence; returns (answer with corrected citations, report). With the strict

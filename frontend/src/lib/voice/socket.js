@@ -1,5 +1,7 @@
 // WebSocket client for /ws/voice: reconnects with backoff, replays its configuration after a
-// reconnect, keeps the connection warm with pings, and never queues stale partial transcripts.
+// reconnect, keeps the connection warm with pings, and never queues stale partial transcripts
+// or audio. Binary messages carry the server's spoken answer (see pcm.js).
+import { parseAudioFrame } from "./pcm.js";
 
 export function voiceSocketUrl(base = import.meta.env.VITE_API_BASE || "/api") {
   if (/^https?:\/\//.test(base)) return `${base.replace(/^http/, "ws").replace(/\/$/, "")}/ws/voice`;
@@ -8,10 +10,11 @@ export function voiceSocketUrl(base = import.meta.env.VITE_API_BASE || "/api") {
 }
 
 export class VoiceSocket {
-  constructor(url, { onEvent, onStatus } = {}) {
+  constructor(url, { onEvent, onStatus, onAudio } = {}) {
     this.url = url;
     this.onEvent = onEvent;
     this.onStatus = onStatus;
+    this.onAudio = onAudio;
     this.queue = [];
     this.config = null;
     this.closed = false;
@@ -36,6 +39,7 @@ export class VoiceSocket {
       return;
     }
     this.ws = ws;
+    ws.binaryType = "arraybuffer";
     ws.onopen = () => {
       this.attempt = 0;
       if (this.config) ws.send(JSON.stringify({ type: "start", ...this.config }));
@@ -44,6 +48,10 @@ export class VoiceSocket {
       this._ping = setInterval(() => this.send({ type: "ping", t: Date.now() }), 20000);
     };
     ws.onmessage = (e) => {
+      if (typeof e.data !== "string") {
+        try { this.onAudio?.(parseAudioFrame(e.data)); } catch { /* malformed frame */ }
+        return;
+      }
       let event;
       try { event = JSON.parse(e.data); } catch { return; }
       if (event.type === "ready") {
@@ -74,6 +82,11 @@ export class VoiceSocket {
   configure(config) {
     this.config = config;
     this.send({ type: "start", ...config });
+  }
+
+  /** Microphone audio: dropped while disconnected (stale audio is worse than none). */
+  sendBinary(buf) {
+    if (this.ws?.readyState === WebSocket.OPEN && this.ws.bufferedAmount < 1 << 20) this.ws.send(buf);
   }
 
   send(msg) {

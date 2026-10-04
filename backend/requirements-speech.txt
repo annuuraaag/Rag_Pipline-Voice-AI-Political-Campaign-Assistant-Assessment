@@ -1,0 +1,4 @@
+# Server-side speech on CPU (STT_PROVIDER=local, TTS_PROVIDER=local, Silero VAD): sherpa-onnx.
+# Models: python scripts/download_models.py --speech. Cloud providers (Deepgram, Whisper,
+# OpenAI-compatible, ElevenLabs) need only requirements.txt.
+sherpa-onnx==1.13.8
