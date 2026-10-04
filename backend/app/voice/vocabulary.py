@@ -8,7 +8,7 @@ Vocabulary: the district gazetteer, plus the campaign's own proper names read fr
 words capitalised mid-sentence that never appear in lower case ("Pratibha", "Udayam", "Poshana"),
 and the multi-word names they belong to ("Pratibha Scholarship").
 
-A span of 1-3 words is replaced by a name only if
+A span of 1-4 words is replaced by a name only if
   * it contains a word the campaign's documents never use (a misheard name rarely is a real word
     of the corpus, while "office" or "last" always are), and it neither starts nor ends with such
     a known word unless the name does ("the Pratiba scholarship" → "the Pratibha Scholarship"), and
@@ -83,7 +83,7 @@ def corpus_names(texts: Iterable[str], titles: Iterable[str] = ()) -> list[str]:
             words = run.split()
             while words and words[0].lower() in _LEADING:
                 words = words[1:]
-            if 1 < len(words) <= 4 and any(w in proper for w in words):
+            if 1 < len(words) <= 4 and any(w in proper for w in words):  # spans are at most 4 words
                 names.add(" ".join(words))
     return sorted(names)
 
@@ -131,7 +131,7 @@ class VocabularyCorrector:
         out, pos, i = [], 0, 0
         while i < len(tokens):
             hit = None
-            for n in (3, 2, 1):
+            for n in (4, 3, 2, 1):
                 if i + n > len(tokens) or not any(unknown[i:i + n]):
                     continue
                 start, end = tokens[i].start(), tokens[i + n - 1].end()

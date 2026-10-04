@@ -6,8 +6,10 @@ manifestos, district plans, scheme guides, FAQs. Every answer cites the file, pa
 came from. When the documents don't cover a question, the assistant says so instead of guessing.
 
 It is built for real-time voice. Retrieval starts **while the user is still speaking**, the
-answer is **spoken sentence by sentence as it is generated**, and the user can **interrupt** at
-any moment.
+assistant **hears when a question is finished** instead of waiting out a fixed pause, the answer is
+**spoken sentence by sentence as it is generated**, and the user can **interrupt** at any moment.
+Speech can be recognised and spoken in the browser or **on the server** (private, on CPU, or with a
+cloud provider), and every sentence of an answer is **checked against the passage it cites**.
 
 > The sample corpus is **fictional** (the "Sunrise Coast Alliance" and its candidate are invented).
 > The assistant is informational, never persuasive.
@@ -41,9 +43,12 @@ any moment.
 | **Conversation memory** | Remembers district, topic and the last named scheme. "What about education?" becomes "What are the education plans and schemes in Vijayawada?" |
 | **Multi-document answers** | Context mixes up to 4 passages (at most 2 per document), so the manifesto, a district plan and a scheme guide can all be cited together. |
 | **Citations** | The model writes `[S1]`…`[S4]`; file, page and section are attached from metadata, so citations cannot be invented. |
+| **Verified claims** | Each sentence is checked against the passage it cites: figures, districts and names must be there, and most of its words. Wrong citations are moved to the passage that supports the sentence; unsupported sentences are underlined (or removed and not spoken, in strict mode). |
 | **Real-time voice** | Streaming speech recognition, speculative retrieval on partial transcripts, sentence-level speech output, barge-in. |
+| **End of turn** | The transcript decides how long a silence ends the question: 300 ms after "…for farmers in Guntur", 1.6 s after "…for farmers in". |
+| **Server-side speech** | Optional: the microphone streams to the server, which recognises (local sherpa-onnx, Deepgram or Whisper), corrects misheard place and scheme names, detects barge-in, and speaks answers with its own voice (local Piper/Kokoro, Deepgram, OpenAI-compatible, ElevenLabs). |
 | **Multi-campaign** | Every document, search and conversation is isolated per campaign (tenant). |
-| **Measured** | Retrieval, answer quality and latency each have an evaluation script and stored results. |
+| **Measured** | Retrieval, answers, claim checks, end of turn, latency and the voice pipeline on real audio each have an evaluation script and stored results. |
 
 ---
 
@@ -56,16 +61,19 @@ through ONNX Runtime; there is no GPU or PyTorch dependency.
 
 ```
 ┌──────────────── Browser (React) ────────────────┐
-│ Mic → Speech recognition (partial transcripts)  │
-│ Speech output ← sentence splitter ← tokens      │
+│ Mic → Web Speech API (partials) or 16 kHz PCM   │
+│ Speech output ← sentences ← tokens, or PCM audio│
 └───────────────┬─────────────────▲───────────────┘
-                │ WebSocket /ws/voice (also REST + SSE)
+                │ WebSocket /ws/voice: JSON + audio (also REST + SSE)
 ┌───────────────▼─────────────────┴───────────────┐
 │ FastAPI                                         │
-│  Voice controller (speculative retrieval)       │
+│  Server speech (optional): VAD → streaming STT  │
+│   → name correction; TTS per sentence; barge-in │
+│  End-of-turn verdicts · speculative retrieval   │
 │  Memory + query rewrite → filters               │
 │  Dense ‖ BM25 → RRF → cross-encoder → gate      │
 │  Multi-document context → LLM (Groq) → citations│
+│   → claim check (each sentence vs its source)   │
 └───────┬───────────────────────────────┬─────────┘
         │                               │
    Qdrant (vectors)            BM25 index + document registry
@@ -81,7 +89,7 @@ through ONNX Runtime; there is no GPU or PyTorch dependency.
 | Keyword search | BM25 (rank-bm25) |
 | Reranker | `ms-marco-MiniLM-L-6-v2` cross-encoder (ONNX) |
 | LLM | Groq (OpenAI-compatible API, streamed); offline extractive fallback |
-| Speech | Browser Web Speech API; Whisper via Groq as a fallback (`/transcribe`) |
+| Speech | Browser Web Speech API, or on the server: sherpa-onnx on CPU (Kroko streaming STT, Piper/Kokoro voices, Silero VAD), Deepgram, Whisper (OpenAI-compatible), ElevenLabs |
 | OCR | RapidOCR (ONNX) + pypdfium2 |
 | Frontend | React + Vite, served by nginx |
 
@@ -131,8 +139,10 @@ GROQ_API_KEY=gsk_your_key_here
 ```bash
 docker compose up --build
 ```
-The first run takes a few minutes: it downloads Python and Node images and the AI models.
-It is ready when the log shows `Application startup complete`. Later starts take seconds.
+The first run takes a few minutes: it downloads Python and Node images and the AI models,
+including the local speech models (~140 MB; build with `SPEECH_MODELS=false docker compose build`
+to skip them and leave speech to the browser). It is ready when the log shows
+`Application startup complete`. Later starts take seconds.
 
 **Step 6: Open the app**
 - **Web app:** http://localhost:5173
@@ -166,6 +176,13 @@ python scripts/download_models.py            # downloads embedding + reranker mo
 cp .env.example .env                         # then add GROQ_API_KEY (Windows: copy)
 ```
 
+Optional, server-side speech on CPU (otherwise the browser recognises and speaks):
+```bash
+pip install -r backend/requirements-speech.txt
+python scripts/download_models.py --only-speech   # Kroko STT, Piper voice, Silero VAD → models/
+# in .env: STT_PROVIDER=local and TTS_PROVIDER=local
+```
+
 **Step 3: Start the API** (embedded vector database, no separate server needed)
 ```bash
 cd backend
@@ -197,7 +214,7 @@ Open http://localhost:5173. The dev server forwards `/api` calls to the backend 
 Example: the user says *"I'm from Vijayawada"*, then *"what about new hospitals?"*
 
 1. **Listen.** The browser streams partial transcripts ("what about", "what about new hospitals")
-   over a WebSocket.
+   over a WebSocket, or, with server recognition, the microphone audio itself.
 2. **Understand.** Conversation memory already holds *district = Vijayawada*, so the question
    becomes *"…new hospitals in Vijayawada"*. Search is filtered to Vijayawada plus statewide documents.
 3. **Search ahead.** The voice controller works through four stages:
@@ -209,60 +226,17 @@ Example: the user says *"I'm from Vijayawada"*, then *"what about new hospitals?
    | S2 | the user pauses | Runs the precise rerank (~230 ms on CPU), so it is already done when they finish |
    | S3 | the final transcript | Reuses the speculative result if the question is identical |
 
-4. **Decide.** If no passage passes the relevance gate, the assistant replies "not in the
+4. **Hear the end.** Each partial gets an end-of-turn verdict: "…new hospitals" sounds finished
+   (answer after 300 ms of silence), "…new hospitals in" does not (wait 1.6 s).
+5. **Decide.** If no passage passes the relevance gate, the assistant replies "not in the
    documents" and the LLM is not called.
-5. **Answer.** The LLM receives 4 numbered passages and must cite them. Tokens stream back.
-6. **Speak.** Each completed sentence is spoken immediately; citations show on screen.
-7. **Interrupt.** Tapping the mic, pressing Space, or simply talking (in conversation mode) stops
+6. **Answer.** The LLM receives 4 numbered passages and must cite them. Tokens stream back.
+7. **Speak.** Each completed sentence (the first one may stop at a comma) is spoken immediately,
+   by the browser or the server voice; citations show on screen.
+8. **Check.** Every sentence is checked against the passage it cites; a misattributed citation is
+   corrected, an unsupported sentence is underlined.
+9. **Interrupt.** Tapping the mic, pressing Space, or simply talking (in conversation mode) stops
    the speech and the generation, and starts listening again.
-
----
-
-## Quick start
-
-### Prerequisites
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- A free [Groq API key](https://console.groq.com/keys). Optional: without it, answers come from a
-  labelled offline fallback that quotes the documents.
-- Chrome, Edge or Safari, for live speech recognition.
-
-### Run with Docker
-
-```bash
-git clone https://github.com/annuuraaag/Rag_Pipline-Voice-AI-Political-Campaign-Assistant-Assessment.git
-cd Rag_Pipline-Voice-AI-Political-Campaign-Assistant-Assessment
-cp .env.example .env          # Windows: copy .env.example .env
-# open .env and set GROQ_API_KEY=...
-docker compose up --build
-```
-
-| URL | What |
-|---|---|
-| http://localhost:5173 | Web app |
-| http://localhost:8000/docs | Interactive API docs (Swagger) |
-| http://localhost:8000/health | System health |
-
-The first build downloads the models (a few minutes). The 10-document sample corpus is indexed
-automatically on first start.
-
-### Run locally (without Docker)
-
-```bash
-python -m venv .venv
-source .venv/bin/activate                 # Windows: .venv\Scripts\activate
-pip install -r backend/requirements-dev.txt
-pip install --no-deps -r backend/requirements-ocr.txt
-python scripts/download_models.py         # embedding + reranker models → models/
-
-cd backend
-SEED_SAMPLE_DATA=true uvicorn app.main:app --reload     # API on :8000, embedded Qdrant
-
-# in a second terminal
-cd frontend
-npm install
-npm run dev                               # web app on :5173
-```
 
 ---
 
@@ -284,7 +258,8 @@ npm run dev                               # web app on :5173
 
 **Settings:**
 - Recognition language (English India / US / UK), voice, speaking rate.
-- End-of-question pause.
+- Speech recognition and answer voice: in the browser or on the server (when the server offers them).
+- Smart end-of-question detection, and the pause used when it can't tell.
 - Conversation mode: hands-free; interrupt by speaking.
 - Theme, and an API key if the server requires one.
 
@@ -303,7 +278,7 @@ npm run dev                               # web app on :5173
 | `POST` | `/upload` | Upload and index a document (multipart; optional `campaign_id`, `district`, `category`, `topic`, `source`) |
 | `POST` | `/retrieve` | Retrieval only: scored passages, metadata, filters, relevance decision, per-stage latency |
 | `POST` | `/query` | Grounded answer with citations; JSON, or streamed with `"stream": true` (SSE) |
-| `WS` | `/ws/voice` | Real-time voice turns with speculative retrieval |
+| `WS` | `/ws/voice` | Real-time voice: transcripts or microphone audio in; end-of-turn hints, answers and spoken audio out |
 | `POST` | `/transcribe` | Audio → text (Whisper) for browsers without speech recognition |
 | `GET` | `/health` | Component diagnostics and active configuration |
 | `GET` | `/metrics` | Rolling P50/P90/P95 latency per endpoint and stage |
@@ -334,8 +309,8 @@ See [docs/API.md](docs/API.md) for request/response schemas, SSE events and the 
 
 ## Evaluation and results
 
-Retrieval, answers and latency are measured separately, so a wrong or slow answer can be traced to
-the stage that caused it.
+Retrieval, answers, claim checks, end of turn and latency are measured separately, so a wrong or
+slow answer can be traced to the stage that caused it.
 
 - **Test set.** 32 labelled questions in `eval/queries.jsonl`. They cover direct facts, district
   questions, multi-document questions, follow-ups, disfluent voice-style phrasing and exact scheme
@@ -345,10 +320,16 @@ the stage that caused it.
 
 ```bash
 python eval/run_retrieval_eval.py [--rerank]         # → eval/results/retrieval_eval.md
-python eval/run_answer_eval.py [--rerank] [--judge]   # → eval/results/answer_eval.md
-python eval/run_latency_benchmark.py [--rerank]      # → eval/results/latency_benchmark.md
+python eval/run_answer_eval.py [--rerank] [--judge]   # → answer_eval.md (claim check + LLM judge)
+python eval/run_latency_benchmark.py [--rerank]      # → latency_benchmark.md (to first token and first audio)
+python eval/run_endpointing_eval.py                  # → endpointing_eval.md (no models needed)
+python eval/run_verifier_eval.py                     # → verifier_eval.md (no models needed)
+python eval/run_speech_eval.py [--barge-in]          # → speech_eval.md (real audio; needs --speech models)
 # inside Docker:  docker compose exec backend python eval/run_answer_eval.py --rerank --judge
 ```
+
+The answer evaluation with a real LLM needs `GROQ_API_KEY`: with it, `--judge` has the LLM count
+supported and unsupported claims, and the report shows how often the claim check agrees.
 
 | Design choice | Measured effect |
 |---|---|
@@ -357,9 +338,20 @@ python eval/run_latency_benchmark.py [--rerank]      # → eval/results/latency_
 | Conversation-aware query rewriting | Recall@5 0.81 → **0.95**; follow-up questions **0.33 → 0.92** |
 | Cross-encoder rerank as the relevance gate | off-topic questions refused **7/7** (vs 6/7); MRR 0.91 → **0.95** |
 | Speculative retrieval on partial transcripts | reused for **31 of 32** simulated spoken questions, taking retrieval off the critical path |
+| Adaptive end of turn vs a fixed 900 ms pause | finished questions wait **484 ms** on average (transcripts); on real audio, last word → first answer audio p50 **749 ms vs 1,127 ms** |
+| Claim check (each sentence vs its cited passage) | **99.6%** of 253 corrupted claims caught (changed figure, swapped district, absent from context); **0%** of 443 correct claims flagged (synthetic, from the corpus) |
+| Server speech on CPU (Kroko STT + Piper voice) | word error rate **18.6%** on synthetic speech; barge-in caught **5/5**, ~0.93 s after the first word |
+| Name correction for misheard places and schemes | districts recognised **0% → 31%** (offline decode of the same audio) |
 
 The corpus is small (10 documents, 32 questions), so differences of a few points are indicative
 rather than statistically significant. Full tables are in [`eval/results/`](eval/results/).
+
+`speech_eval.md` was produced in a sandbox where neither bge-small nor an LLM key was available:
+retrieval used a labelled test embedder (retrieval runs off the critical path thanks to speculation)
+and answers came from the instant extractive fallback, so add your LLM's time-to-first-token to its
+latencies. The voice that asks is the same synthetic voice the assistant uses, so real speakers
+will see higher error rates. Re-run it, `run_latency_benchmark.py` and `run_answer_eval.py --judge`
+with the real models and a key for complete numbers.
 
 ---
 
@@ -369,7 +361,7 @@ All settings are environment variables; see [`.env.example`](.env.example). The 
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `GROQ_API_KEY` | – | LLM and server-side speech-to-text |
+| `GROQ_API_KEY` | – | LLM, and Whisper speech-to-text (`/transcribe`, `STT_PROVIDER=whisper`) |
 | `LLM_MODEL` | `llama-3.1-8b-instant` | Replaced automatically if Groq retires it |
 | `RETRIEVAL_MODE` | `hybrid` | `hybrid`, `dense` or `bm25` |
 | `TOP_K` / `CANDIDATE_K` | 4 / 20 | Passages sent to the LLM / candidates per retriever |
@@ -377,6 +369,10 @@ All settings are environment variables; see [`.env.example`](.env.example). The 
 | `SIMILARITY_THRESHOLD` | 0.62 | Relevance gate without the reranker |
 | `CHUNK_MAX_TOKENS` | 256 | Chunk size, counted with the embedding model's tokenizer |
 | `VOICE_DEBOUNCE_MS` / `VOICE_STABLE_MS` | 250 / 500 | Speculative search timing |
+| `VOICE_ADAPTIVE_ENDPOINTING` | `true` | End-of-turn verdicts; waits per verdict: `VOICE_ENDPOINT_{COMPLETE,LIKELY,UNSURE,INCOMPLETE}_MS` = 300 / 550 / 900 / 1600 |
+| `STT_PROVIDER` / `TTS_PROVIDER` | `none` (`local` in Docker) | Server-side speech: `local`, `deepgram`, `whisper` / `local`, `deepgram`, `openai`, `elevenlabs` |
+| `DEEPGRAM_API_KEY` · `ELEVENLABS_API_KEY` · `STT_BASE_URL` · `TTS_BASE_URL` | – | Cloud speech keys, or self-hosted OpenAI-compatible speech servers |
+| `CITATION_VERIFICATION` | `flag` | `off`, `flag` (mark unsupported sentences), `strict` (also remove them, unspoken) |
 | `OCR_ENABLED` | `true` | OCR for scanned pages and images |
 | `API_KEY` | – | When set, uploads and deletions require `X-API-Key` |
 | `CORS_ORIGINS` | `*` | Allowed browser origins (also checked for the WebSocket) |
@@ -391,16 +387,19 @@ backend/app/
   ingestion/       parsers, OCR, cleaning, chunker, metadata, document registry
   retrieval/       embedder, Qdrant store, BM25, fusion, reranker, context builder, pipeline
   conversation/    query understanding, memory, rewriter
-  generation/      prompt, citations, LLM adapters (Groq / extractive fallback)
-  voice/           partial-transcript controller, speech-to-text
+  generation/      prompt, citations, claim check (verify.py), LLM adapters (Groq / extractive fallback)
+  voice/           partial-transcript controller, end-of-turn rules, server speech: VAD, STT and
+                   TTS providers, name correction, speech session (audio in, spoken answers out)
   rag/             orchestration of the full request
   observability/   stage timing, latency percentiles, structured logs
 backend/tests/     unit and API tests
-frontend/src/      React app (lib/voice: recognition, endpointing, speech output, socket, barge-in)
-frontend/e2e/      browser test of the voice flow
+frontend/src/      React app (lib/voice: recognition, endpointing, speech output, PCM capture and
+                   playback, socket, barge-in)
+frontend/e2e/      browser tests of the voice flow (browser speech; server speech with real audio)
 eval/              labelled questions, evaluation scripts, results
 sample_data/       fictional campaign documents (PDF, DOCX, MD, TXT, scanned PDF, image)
-scripts/           model download, sample document builder
+scripts/           model download (--speech for the local speech models), sample document builder,
+                   spoken-question WAV builder for the server-speech browser test
 docs/              design note, API reference, architecture diagram
 ```
 
@@ -409,13 +408,18 @@ docs/              design note, API reference, architecture diagram
 ## Testing
 
 ```bash
-cd backend && pytest                  # 120 tests; no network or model download needed
+cd backend && pytest                  # 185 tests; no network or model download needed
 cd frontend && npm run test:e2e       # full voice flow in a real browser (needs the stack running)
 ruff check backend eval scripts       # lint
 ```
 
 The browser test replaces only the speech engine (with a scripted recognizer and synthesizer).
-The app, WebSocket, speculative retrieval, streaming, barge-in and source panel all run for real.
+The app, WebSocket, speculative retrieval, end-of-turn hints, streaming, barge-in and source panel
+all run for real. `frontend/e2e/server-speech.e2e.mjs` tests server speech with real audio: a
+spoken question (built with `scripts/make_speech_wav.py`) is Chromium's microphone; the server
+recognises it, answers in its own voice, and a second question spoken over the answer must
+interrupt it. Speech providers are tested against fakes (`tests/test_speech*.py`); a test with the
+real local models runs when they are downloaded.
 
 ---
 
@@ -430,6 +434,8 @@ The app, WebSocket, speculative retrieval, streaming, barge-in and source panel 
   campaign is rejected.
 - **Prompt injection:** document text is treated as data in the prompt.
 - **Errors:** internal errors return only a reference id.
+- **Speech audio:** processed in memory and never stored; with the local providers it never leaves
+  the server. Audio frames over 64 KB are dropped.
 - **Web server:** nginx sends a Content-Security-Policy and other security headers. The backend
   container runs as a non-root user.
 
@@ -437,9 +443,15 @@ The app, WebSocket, speculative retrieval, streaming, barge-in and source panel 
 
 ## Limitations and next steps
 
-- **Speech privacy:** the browser speech recognition in Chrome uses Google's servers. A
-  self-hosted streaming speech-to-text service would remove that dependency.
-- **Endpointing:** a semantic end-of-turn detector could shorten the fixed end-of-question pause.
+- **Local recognition accuracy:** the on-CPU recogniser is private but small; on clean synthetic
+  speech it gets about one word in five wrong and still misses many place names after correction.
+  Deepgram (with key terms) or Whisper are the accurate options. In-browser recognition remains
+  the default where available.
+- **End-of-turn rules:** rules on the transcript, tuned on 32 questions. An audio-aware turn
+  detector (prosody) and real usage logs would refine them.
+- **Real-LLM numbers:** answer faithfulness, the claim check's agreement with an LLM judge, and
+  time-to-first-token were not measured here (no API key in the build environment); the scripts
+  report them as soon as `GROQ_API_KEY` is set.
 - **Speculative generation:** generating the answer speculatively would also hide the LLM's
   time-to-first-token, at extra token cost.
 - **Languages:** Telugu and code-mixed speech would need multilingual embeddings.

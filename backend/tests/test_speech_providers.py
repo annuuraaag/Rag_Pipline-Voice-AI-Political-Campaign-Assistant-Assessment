@@ -39,6 +39,7 @@ def corrector(container) -> VocabularyCorrector:
     ("Compare the hospital plans for Gunter and Visika Putnam", "Compare the hospital plans for Guntur and Visakhapatnam"),
     ("Who is eligible for the Pratiba scholarship", "Who is eligible for the Pratibha Scholarship"),
     ("I live in Bezoada", "I live in Bezawada"),
+    ("Kissing price guarantee fund", "Kisan Price Guarantee Fund"),
 ])
 def test_misheard_names_are_corrected(corrector, heard, fixed):
     assert corrector.correct(heard) == fixed

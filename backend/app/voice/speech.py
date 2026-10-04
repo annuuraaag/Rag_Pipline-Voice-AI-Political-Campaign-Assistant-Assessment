@@ -344,7 +344,7 @@ class AnswerSpeaker:
     """Speaks one answer while it is being written: tokens in, ordered audio frames out."""
 
     def __init__(self, tts: TTSProvider, send_audio: Callable[[dict, bytes], Awaitable[None]], emit: Emit,
-                 turn_id: str, *, speed: float = 1.0, first_clause: int = 40,
+                 turn_id: str, *, speed: float = 1.0, first_clause: int = 24,
                  gate: Callable[[str], Awaitable[bool]] | None = None):
         self.tts = tts
         self.send_audio = send_audio
