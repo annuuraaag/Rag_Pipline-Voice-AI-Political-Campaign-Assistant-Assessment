@@ -1,0 +1,2 @@
+# Install with: pip install --no-deps -r requirements-ocr.txt (its other deps are in requirements.txt)
+rapidocr-onnxruntime==1.4.4

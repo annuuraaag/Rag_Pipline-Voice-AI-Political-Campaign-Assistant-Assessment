@@ -1,0 +1,4 @@
+-r requirements.txt
+# then: pip install --no-deps -r requirements-ocr.txt
+pytest==9.1.1
+reportlab==5.0.1   # only used by scripts/build_sample_docs.py to render sample PDFs

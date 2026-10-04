@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+data/
+models/
+frontend/node_modules/
+frontend/dist/
+.DS_Store
+.env.*
+!.env.example
+*.log
+frontend/e2e-shots/

@@ -1,0 +1,76 @@
+{
+  "description": "Fictional campaign corpus for the Campaign Voice RAG assessment. All parties, people, schemes and figures are invented.",
+  "documents": [
+    {
+      "path": "agriculture/farmers_charter.txt",
+      "district": "statewide",
+      "category": "policy",
+      "topic": "agriculture",
+      "source": "SCA Policy Papers 2026"
+    },
+    {
+      "path": "candidate/candidate_profile.docx",
+      "district": "vijayawada",
+      "category": "candidate_profile",
+      "topic": "general",
+      "source": "SCA Candidate Profiles",
+      "candidate": "Dr. Anitha Rao Kotagiri"
+    },
+    {
+      "path": "districts/guntur_district_plan.md",
+      "district": "guntur",
+      "category": "district_profile",
+      "topic": "general",
+      "source": "SCA District Plans 2026"
+    },
+    {
+      "path": "districts/vijayawada_district_plan.pdf",
+      "district": "vijayawada",
+      "category": "district_profile",
+      "topic": "general",
+      "source": "SCA District Plans 2026"
+    },
+    {
+      "path": "districts/visakhapatnam_district_plan.docx",
+      "district": "visakhapatnam",
+      "category": "district_profile",
+      "topic": "general",
+      "source": "SCA District Plans 2026"
+    },
+    {
+      "path": "employment/employment_plan.md",
+      "district": "statewide",
+      "category": "policy",
+      "topic": "employment",
+      "source": "SCA Policy Papers 2026"
+    },
+    {
+      "path": "faq/campaign_faq.md",
+      "district": "statewide",
+      "category": "faq",
+      "topic": "campaign_info",
+      "source": "SCA Campaign FAQ"
+    },
+    {
+      "path": "manifesto/sca_manifesto_2026.pdf",
+      "district": "statewide",
+      "category": "manifesto",
+      "topic": "general",
+      "source": "SCA People's Manifesto 2026"
+    },
+    {
+      "path": "schemes/education_schemes.txt",
+      "district": "statewide",
+      "category": "scheme",
+      "topic": "education",
+      "source": "SCA Scheme Guides 2026"
+    },
+    {
+      "path": "schemes/healthcare_schemes.md",
+      "district": "statewide",
+      "category": "scheme",
+      "topic": "healthcare",
+      "source": "SCA Scheme Guides 2026"
+    }
+  ]
+}

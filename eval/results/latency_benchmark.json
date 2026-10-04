@@ -1,0 +1,173 @@
+{
+  "config": {
+    "llm": "extractive/extractive-fallback (offline fallback: no API key)",
+    "retrieval": "hybrid(dense+bm25, rrf)",
+    "gate": "dense"
+  },
+  "machine": "sandbox VM (Linux x86_64, shared vCPUs)",
+  "queries": 32,
+  "repeats": 2,
+  "word_ms": 250,
+  "endpoint_ms": 900,
+  "typed": {
+    "rewrite": {
+      "n": 64,
+      "p50": 0.15,
+      "p90": 0.21,
+      "p95": 0.23,
+      "mean": 0.16,
+      "max": 0.49
+    },
+    "embed": {
+      "n": 64,
+      "p50": 7.1,
+      "p90": 8.86,
+      "p95": 10.08,
+      "mean": 7.24,
+      "max": 10.4
+    },
+    "dense": {
+      "n": 64,
+      "p50": 3.67,
+      "p90": 4.45,
+      "p95": 5.76,
+      "mean": 4.79,
+      "max": 76.61
+    },
+    "bm25": {
+      "n": 64,
+      "p50": 0.3,
+      "p90": 0.44,
+      "p95": 0.46,
+      "mean": 0.31,
+      "max": 0.6
+    },
+    "fusion": {
+      "n": 64,
+      "p50": 0.21,
+      "p90": 0.29,
+      "p95": 0.33,
+      "mean": 0.24,
+      "max": 1.44
+    },
+    "threshold": {
+      "n": 64,
+      "p50": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "mean": 0.0,
+      "max": 0.0
+    },
+    "context": {
+      "n": 64,
+      "p50": 0.01,
+      "p90": 0.01,
+      "p95": 0.01,
+      "mean": 0.01,
+      "max": 0.04
+    },
+    "retrieval_total": {
+      "n": 64,
+      "p50": 12.08,
+      "p90": 15.81,
+      "p95": 17.01,
+      "mean": 13.78,
+      "max": 83.67
+    },
+    "first_token": {
+      "n": 64,
+      "p50": 12.84,
+      "p90": 16.72,
+      "p95": 17.69,
+      "mean": 14.51,
+      "max": 84.36
+    },
+    "llm": {
+      "n": 52,
+      "p50": 0.77,
+      "p90": 0.91,
+      "p95": 1.03,
+      "mean": 0.8,
+      "max": 1.31
+    },
+    "total": {
+      "n": 64,
+      "p50": 13.43,
+      "p90": 17.15,
+      "p95": 17.87,
+      "mean": 15.05,
+      "max": 85.07
+    }
+  },
+  "voice": {
+    "queries": 32,
+    "cache_outcomes": {
+      "hit": 31,
+      "stage1": 0,
+      "miss": 1
+    },
+    "reuse_rate": 0.969,
+    "final_to_first_token": {
+      "speculative": {
+        "n": 32,
+        "p50": 1.11,
+        "p90": 1.6,
+        "p95": 1.76,
+        "mean": 1.49,
+        "max": 11.75
+      },
+      "baseline": {
+        "n": 32,
+        "p50": 14.51,
+        "p90": 17.62,
+        "p95": 19.41,
+        "mean": 14.88,
+        "max": 20.34
+      }
+    },
+    "retrieval_on_critical_path": {
+      "speculative": {
+        "n": 32,
+        "p50": 0.0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "mean": 0.34,
+        "max": 10.88
+      },
+      "baseline": {
+        "n": 32,
+        "p50": 13.82,
+        "p90": 16.41,
+        "p95": 18.34,
+        "mean": 14.05,
+        "max": 19.23
+      }
+    },
+    "end_of_speech_to_first_token": {
+      "speculative": {
+        "n": 32,
+        "p50": 901.11,
+        "p90": 901.6,
+        "p95": 901.76,
+        "mean": 901.49,
+        "max": 911.75
+      },
+      "baseline": {
+        "n": 32,
+        "p50": 914.51,
+        "p90": 917.62,
+        "p95": 919.41,
+        "mean": 914.88,
+        "max": 920.34
+      }
+    },
+    "retrieval_saved_per_turn": {
+      "n": 32,
+      "p50": 13.82,
+      "p90": 16.41,
+      "p95": 18.34,
+      "mean": 13.71,
+      "max": 19.23
+    }
+  }
+}

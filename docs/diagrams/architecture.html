@@ -1,0 +1,267 @@
+<!doctype html>
+<!-- Source of docs/architecture.png. Re-render: node docs/diagrams/render.mjs -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Architecture</title>
+<style>
+  @font-face { font-family: "Inter"; font-weight: 100 900; src: url("../../frontend/node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2"); }
+  body { margin: 0; background: #ffffff; font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  svg { display: block; }
+  .lane { fill: #f6f6f9; stroke: #e3e3ea; }
+  .lane-voice { fill: #f3f2ff; stroke: #dcd9fb; }
+  .lane-title { font-size: 15px; font-weight: 700; fill: #17171c; letter-spacing: -0.01em; }
+  .lane-sub { font-size: 12px; fill: #6e6e7a; }
+  .box { fill: #ffffff; stroke: #cfcfd8; stroke-width: 1.2; }
+  .box-accent { fill: #ffffff; stroke: #6366f1; stroke-width: 1.6; }
+  .box-store { fill: #fbfbfd; stroke: #b8b8c6; stroke-width: 1.2; }
+  .box-gate { fill: #fffaf0; stroke: #d6a64a; stroke-width: 1.3; }
+  .h { font-size: 13.5px; font-weight: 650; fill: #17171c; }
+  .t { font-size: 11.5px; fill: #4d4d58; }
+  .m { font-size: 11px; fill: #6e6e7a; }
+  .tag { font-size: 10.5px; font-weight: 600; fill: #4338ca; }
+  .stage { font-size: 11.5px; fill: #17171c; }
+  .stage b { font-weight: 700; }
+  .arrow { stroke: #8b8b99; stroke-width: 1.4; fill: none; marker-end: url(#ah); }
+  .arrow-accent { stroke: #6366f1; stroke-width: 1.8; fill: none; marker-end: url(#ah-accent); }
+  .arrow-dash { stroke: #8b8b99; stroke-width: 1.3; fill: none; stroke-dasharray: 5 4; marker-end: url(#ah); }
+  .lbl { font-size: 10.5px; fill: #4d4d58; }
+  .lbl-accent { font-size: 10.5px; fill: #4338ca; font-weight: 600; }
+  .title { font-size: 22px; font-weight: 750; fill: #17171c; letter-spacing: -0.02em; }
+  .subtitle { font-size: 13px; fill: #6e6e7a; }
+</style>
+</head>
+<body>
+<svg id="diagram" width="1600" height="1010" viewBox="0 0 1600 1010" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8b8b99" />
+    </marker>
+    <marker id="ah-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6366f1" />
+    </marker>
+  </defs>
+
+  <text x="40" y="44" class="title">Campaign Voice RAG: architecture</text>
+  <text x="40" y="66" class="subtitle">Real-time voice turns over a grounded, campaign-isolated retrieval pipeline. Single FastAPI service + Qdrant; models run on CPU via ONNX.</text>
+
+  <!-- ── lane 1: voice turn ─────────────────────────────────────────── -->
+  <rect x="24" y="86" width="1552" height="300" rx="16" class="lane lane-voice" />
+  <text x="44" y="114" class="lane-title">1 · Voice turn</text>
+  <text x="160" y="114" class="lane-sub">browser ⇄ WebSocket /ws/voice · retrieval starts while the user is still speaking</text>
+
+  <!-- browser -->
+  <rect x="44" y="132" width="330" height="226" rx="12" class="box-accent" />
+  <text x="62" y="158" class="h">Browser (React)</text>
+  <text x="62" y="182" class="t">• Web Speech API, interim results (en-IN)</text>
+  <text x="62" y="201" class="t">• End of utterance: 900 ms silence, or</text>
+  <text x="74" y="218" class="t">release Space (push-to-talk)</text>
+  <text x="62" y="237" class="t">• Streams partial transcripts as spoken</text>
+  <text x="62" y="256" class="t">• Speaks each sentence as it streams in</text>
+  <text x="74" y="273" class="t">(speechSynthesis, citations stripped)</text>
+  <text x="62" y="292" class="t">• Barge-in: tap / Space / speak over it</text>
+  <text x="74" y="309" class="t">(echo filter in conversation mode)</text>
+  <text x="62" y="333" class="m">No Web Speech API → record + POST /transcribe</text>
+  <text x="62" y="348" class="m">(Whisper via Groq) · socket down → SSE /query</text>
+
+  <!-- controller -->
+  <rect x="452" y="132" width="420" height="226" rx="12" class="box-accent" />
+  <text x="470" y="158" class="h">Partial-transcript controller</text>
+  <text x="470" y="176" class="m">rules-only rewrite of each partial (~0.2 ms), read-only memory</text>
+  <text x="470" y="203" class="stage"><tspan font-weight="700">S0 ignore</tspan>  &lt; 3 words, small talk, nothing new</text>
+  <text x="470" y="228" class="stage"><tspan font-weight="700">S1 search</tspan>  stage-1 retrieval, debounced 250 ms, on a</text>
+  <text x="548" y="245" class="stage">new district / topic / entity or +3 words</text>
+  <text x="470" y="270" class="stage"><tspan font-weight="700">S2 refine</tspan>  transcript stable 500 ms or speech end →</text>
+  <text x="548" y="287" class="stage">rerank + relevance gate ahead of time</text>
+  <text x="470" y="312" class="stage"><tspan font-weight="700">S3 final</tspan>  same query + filters + corpus revision →</text>
+  <text x="548" y="329" class="stage">reuse (hit / stage-1) else retrieve; LLM never</text>
+  <text x="548" y="346" class="stage">called speculatively</text>
+
+  <!-- cache -->
+  <rect x="950" y="132" width="250" height="100" rx="12" class="box-store" />
+  <text x="968" y="158" class="h">Speculation cache</text>
+  <text x="968" y="180" class="t">per connection, 16 entries</text>
+  <text x="968" y="198" class="t">key = normalised query,</text>
+  <text x="968" y="215" class="t">filters, corpus revision</text>
+
+  <!-- generation -->
+  <rect x="1278" y="132" width="278" height="226" rx="12" class="box" />
+  <text x="1296" y="158" class="h">Grounded generation</text>
+  <text x="1296" y="182" class="t">• Sources numbered [S1]…[S4]</text>
+  <text x="1296" y="201" class="t">  with file · page · section</text>
+  <text x="1296" y="220" class="t">• Groq LLM, streamed tokens</text>
+  <text x="1296" y="239" class="t">  (auto-replaces retired models)</text>
+  <text x="1296" y="258" class="t">• Extractive fallback offline</text>
+  <text x="1296" y="277" class="t">• Citations built from metadata;</text>
+  <text x="1296" y="296" class="t">  invalid [S#] markers removed</text>
+  <text x="1296" y="315" class="t">• Memory committed once per turn</text>
+  <text x="1296" y="340" class="m">events: retrieval → token… → done</text>
+
+  <!-- lane 1 arrows -->
+  <path d="M374 196 L450 196" class="arrow-accent" />
+  <text x="381" y="188" class="lbl-accent">partial</text>
+  <path d="M374 240 L450 240" class="arrow-accent" />
+  <text x="381" y="232" class="lbl-accent">final</text>
+  <path d="M450 288 L376 288" class="arrow-accent" />
+  <text x="381" y="281" class="lbl-accent">speculative</text>
+  <path d="M872 182 L948 182" class="arrow" />
+  <text x="880" y="174" class="lbl">store</text>
+  <path d="M948 212 L874 212" class="arrow" />
+  <text x="886" y="226" class="lbl">reuse</text>
+  <path d="M1300 358 L1300 370 L300 370 L300 361" class="arrow-accent" />
+  <text x="900" y="382" class="lbl-accent">tokens → spoken sentence by sentence</text>
+
+  <!-- ── lane 2: retrieval ──────────────────────────────────────────── -->
+  <rect x="24" y="398" width="1552" height="262" rx="16" class="lane" />
+  <text x="44" y="426" class="lane-title">2 · Retrieval</text>
+  <text x="158" y="426" class="lane-sub">shared by the voice socket, POST /query (JSON or SSE) and POST /retrieve · stage 1 = recall, stage 2 = precision</text>
+
+  <rect x="44" y="446" width="200" height="190" rx="12" class="box" />
+  <text x="60" y="471" class="h">Understand + rewrite</text>
+  <text x="60" y="493" class="t">memory per campaign +</text>
+  <text x="60" y="510" class="t">session: district, topic,</text>
+  <text x="60" y="527" class="t">entity, last 6 turns</text>
+  <text x="60" y="548" class="t">"What about education?"</text>
+  <text x="60" y="565" class="t">→ "…education plans in</text>
+  <text x="60" y="582" class="t">Vijayawada"; filler, aliases</text>
+  <text x="60" y="603" class="m">no LLM on the hot path</text>
+  <text x="60" y="619" class="m">(optional, 1.2 s timeout)</text>
+
+  <rect x="270" y="446" width="170" height="190" rx="12" class="box" />
+  <text x="286" y="471" class="h">Filters</text>
+  <text x="286" y="493" class="t">campaign_id: always</text>
+  <text x="286" y="510" class="t">(tenant isolation)</text>
+  <text x="286" y="531" class="t">district ∪ statewide</text>
+  <text x="286" y="552" class="t">topic, category,</text>
+  <text x="286" y="569" class="t">content type</text>
+  <text x="286" y="594" class="m">relaxed (campaign kept)</text>
+  <text x="286" y="610" class="m">if &lt; 3 candidates</text>
+
+  <text x="466" y="458" class="tag">STAGE 1 · ~10–30 ms</text>
+  <rect x="466" y="466" width="200" height="74" rx="12" class="box" />
+  <text x="482" y="490" class="h">Dense top-20</text>
+  <text x="482" y="510" class="t">bge-small-en-v1.5 (ONNX)</text>
+  <text x="482" y="527" class="t">+ query instruction</text>
+  <rect x="466" y="556" width="200" height="74" rx="12" class="box" />
+  <text x="482" y="580" class="h">BM25 top-20</text>
+  <text x="482" y="600" class="t">in memory, same filters</text>
+  <text x="482" y="617" class="t">exact names, numbers</text>
+
+  <rect x="692" y="506" width="140" height="84" rx="12" class="box" />
+  <text x="708" y="532" class="h">RRF fusion</text>
+  <text x="708" y="553" class="t">k = 60, rank-based</text>
+  <text x="708" y="570" class="t">no score scaling</text>
+
+  <text x="858" y="458" class="tag">STAGE 2 · ~230 ms CPU</text>
+  <rect x="858" y="466" width="200" height="124" rx="12" class="box" />
+  <text x="874" y="490" class="h">Cross-encoder rerank</text>
+  <text x="874" y="511" class="t">ms-marco-MiniLM-L-6-v2</text>
+  <text x="874" y="528" class="t">top-12 fused candidates</text>
+  <text x="874" y="545" class="t">calibrated 0–1 relevance</text>
+  <text x="874" y="571" class="m">optional: falls back to the</text>
+  <text x="874" y="586" class="m">dense-cosine gate</text>
+
+  <rect x="1084" y="466" width="190" height="124" rx="12" class="box-gate" />
+  <text x="1100" y="490" class="h">Relevance gate</text>
+  <text x="1100" y="511" class="t">rerank ≥ 0.15</text>
+  <text x="1100" y="528" class="t">(else best cosine ≥ 0.62)</text>
+  <text x="1100" y="552" class="t">fail → "not in the</text>
+  <text x="1100" y="569" class="t">documents", no LLM call</text>
+
+  <rect x="1300" y="466" width="256" height="124" rx="12" class="box" />
+  <text x="1316" y="490" class="h">Multi-document context</text>
+  <text x="1316" y="511" class="t">top-4 passages, ≤ 2 per</text>
+  <text x="1316" y="528" class="t">document, so manifesto +</text>
+  <text x="1316" y="545" class="t">district plan + scheme guide</text>
+  <text x="1316" y="562" class="t">can all be cited</text>
+
+  <!-- lane 2 arrows -->
+  <path d="M244 541 L268 541" class="arrow" />
+  <path d="M440 520 L464 503" class="arrow" />
+  <path d="M440 562 L464 593" class="arrow" />
+  <path d="M666 503 L690 530" class="arrow" />
+  <path d="M666 593 L690 566" class="arrow" />
+  <path d="M832 548 L856 528" class="arrow" />
+  <path d="M1058 528 L1082 528" class="arrow" />
+  <path d="M1274 528 L1298 528" class="arrow" />
+  <!-- lane links -->
+  <path d="M640 358 L640 392 L34 392 L34 541 L42 541" class="arrow-dash" />
+  <text x="420" y="404" class="lbl">S1 / S3: rewrite + stage 1</text>
+  <path d="M840 358 L840 392 L1040 392 L1040 464" class="arrow-dash" />
+  <text x="1048" y="446" class="lbl">S2: rerank + gate</text>
+  <path d="M1428 466 L1428 360" class="arrow" />
+  <text x="1436" y="400" class="lbl">context</text>
+  <path d="M1180 466 L1180 236" class="arrow-dash" />
+  <text x="1188" y="252" class="lbl">result</text>
+
+  <!-- ── lane 3: ingestion ──────────────────────────────────────────── -->
+  <rect x="24" y="680" width="1552" height="306" rx="16" class="lane" />
+  <text x="44" y="708" class="lane-title">3 · Ingestion</text>
+  <text x="156" y="708" class="lane-sub">POST /upload · status uploaded → parsing → chunking → embedding → indexed (or failed, rolled back)</text>
+
+  <rect x="44" y="728" width="236" height="150" rx="12" class="box" />
+  <text x="60" y="753" class="h">Parse</text>
+  <text x="60" y="775" class="t">PDF per page (headers/footers</text>
+  <text x="60" y="792" class="t">removed), DOCX headings and</text>
+  <text x="60" y="809" class="t">tables, Markdown, TXT</text>
+  <text x="60" y="830" class="t">OCR when a page has no text</text>
+  <text x="60" y="847" class="t">layer, PNG/JPG (RapidOCR)</text>
+
+  <rect x="306" y="728" width="170" height="150" rx="12" class="box" />
+  <text x="322" y="753" class="h">Clean</text>
+  <text x="322" y="775" class="t">Unicode, broken emoji,</text>
+  <text x="322" y="792" class="t">disclaimers and other</text>
+  <text x="322" y="809" class="t">boilerplate removed</text>
+
+  <rect x="502" y="728" width="230" height="150" rx="12" class="box" />
+  <text x="518" y="753" class="h">Section-aware chunker</text>
+  <text x="518" y="775" class="t">heading boundaries, whole</text>
+  <text x="518" y="792" class="t">sentences, ≤ 256 tokens</text>
+  <text x="518" y="809" class="t">(model tokenizer), 1-sentence</text>
+  <text x="518" y="826" class="t">overlap; tables and OCR text</text>
+  <text x="518" y="843" class="t">in their own chunks</text>
+
+  <rect x="758" y="728" width="250" height="150" rx="12" class="box" />
+  <text x="774" y="753" class="h">Metadata</text>
+  <text x="774" y="775" class="t">campaign · district · category ·</text>
+  <text x="774" y="792" class="t">topic · source · page · section ·</text>
+  <text x="774" y="809" class="t">content type · embedding model</text>
+  <text x="774" y="830" class="m">form &gt; front matter &gt; manifest &gt;</text>
+  <text x="774" y="845" class="m">gazetteer / topic lexicon</text>
+
+  <rect x="1034" y="728" width="200" height="150" rx="12" class="box" />
+  <text x="1050" y="753" class="h">Embed</text>
+  <text x="1050" y="775" class="t">contextual header</text>
+  <text x="1050" y="792" class="t">(doc · section · district)</text>
+  <text x="1050" y="809" class="t">+ chunk text → 384-d</text>
+  <text x="1050" y="830" class="m">batched; queries take</text>
+  <text x="1050" y="845" class="m">priority over uploads</text>
+
+  <rect x="1260" y="728" width="296" height="66" rx="12" class="box-store" />
+  <text x="1276" y="754" class="h">Qdrant</text>
+  <text x="1276" y="775" class="t">cosine, payload indexes, tenant = campaign</text>
+  <rect x="1260" y="806" width="140" height="72" rx="12" class="box-store" />
+  <text x="1276" y="832" class="h">BM25</text>
+  <text x="1276" y="852" class="t">rebuilt in the</text>
+  <text x="1276" y="867" class="t">background</text>
+  <rect x="1416" y="806" width="140" height="72" rx="12" class="box-store" />
+  <text x="1432" y="832" class="h">Registry</text>
+  <text x="1432" y="852" class="t">status, hash dedup,</text>
+  <text x="1432" y="867" class="t">re-index</text>
+
+  <path d="M280 803 L304 803" class="arrow" />
+  <path d="M476 803 L500 803" class="arrow" />
+  <path d="M732 803 L756 803" class="arrow" />
+  <path d="M1008 803 L1032 803" class="arrow" />
+  <path d="M1234 770 L1258 762" class="arrow" />
+  <path d="M1234 830 L1258 840" class="arrow" />
+  <path d="M1408 728 L1408 670 L566 670 L566 634" class="arrow-dash" />
+  <text x="900" y="654" class="lbl">Qdrant + BM25 indexes serve stage 1</text>
+
+  <text x="44" y="920" class="h">Measured (eval/results)</text>
+  <text x="44" y="942" class="t">Retrieval, 32 labelled queries: Recall@5 0.95 · MRR 0.91 · follow-up Recall@5 0.33 → 0.92 with rewriting · with the reranker: 7/7 off-topic questions declined, Recall@5 0.94, MRR 0.95 (Docker run).</text>
+  <text x="44" y="961" class="t">Voice: an identical speculative retrieval was reused for 31 of 32 simulated spoken questions, taking retrieval off the path between the final transcript and the answer.</text>
+  <text x="44" y="976" class="m">Fictional sample corpus. Informational assistant, never persuasive.</text>
+</svg>
+</body>
+</html>
