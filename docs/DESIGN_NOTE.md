@@ -75,8 +75,11 @@ the speech engine starting. The design attacks each one.
    colon, so synthesis starts on a short clause; audio is streamed back as ~250 ms binary frames and
    played gaplessly with Web Audio. With `CITATION_VERIFICATION=strict` each sentence is checked
    against its sources before it is spoken.
-5. **Barge-in.** Tapping the mic, pressing Space, or (in conversation mode) simply speaking stops
-   speech output immediately, cancels the server-side generation, and starts listening. With server
+5. **Barge-in.** Tapping the mic, pressing Space, or simply speaking over the answer stops
+   speech output immediately, cancels the server-side generation, and starts listening. With
+   browser recognition the recognizer stays open during the answer; only the words after the last
+   stretch of the answer's own echo are judged (3+ words the answer isn't saying, or "stop"), so
+   echo heard earlier never hides an interruption, and silence clears the echo. With server
    recognition the server does this itself: it keeps the microphone stream during the answer, knows
    from its playback schedule what the user is hearing, and treats speech as an interruption once
    it becomes two or more words that do not follow what is being said (word *pairs*, so a question

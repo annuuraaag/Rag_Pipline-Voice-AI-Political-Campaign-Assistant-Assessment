@@ -9,7 +9,8 @@ export const DEFAULT_SETTINGS = {
   voiceURI: "",           // "" = best available voice for `lang`
   rate: 1.05,
   autoSpeak: true,        // speak answers to spoken questions
-  handsFree: false,       // conversation mode: keep listening, interrupt by speaking
+  bargeIn: true,          // talking over a spoken answer interrupts it
+  handsFree: false,       // conversation mode: keep listening after each answer
   endSilenceMs: 900,      // pause that ends an utterance (when smart detection is off or unsure)
   smartEndpointing: true, // shorter pause after a finished question, longer after "for…", "um…"
   speechInput: "auto",    // auto | browser | server: who recognises speech

@@ -51,16 +51,16 @@ export function Tabs({ tabs, value, onChange, className }) {
   );
 }
 
-export function Toggle({ checked, onChange, label, description }) {
+export function Toggle({ checked, onChange, label, description, disabled = false }) {
   const id = useId();
   return (
-    <label className="toggle-row" htmlFor={id}>
+    <label className={cx("toggle-row", disabled && "is-disabled")} htmlFor={id}>
       <span className="toggle-text">
         <span className="toggle-label">{label}</span>
         {description && <span className="toggle-desc">{description}</span>}
       </span>
       <span className="switch">
-        <input id={id} type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+        <input id={id} type="checkbox" role="switch" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
         <span className="switch-track"><span className="switch-thumb" /></span>
       </span>
     </label>

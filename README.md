@@ -235,8 +235,9 @@ Example: the user says *"I'm from Vijayawada"*, then *"what about new hospitals?
    by the browser or the server voice; citations show on screen.
 8. **Check.** Every sentence is checked against the passage it cites; a misattributed citation is
    corrected, an unsupported sentence is underlined.
-9. **Interrupt.** Tapping the mic, pressing Space, or simply talking (in conversation mode) stops
-   the speech and the generation, and starts listening again.
+9. **Interrupt.** Tapping the mic, pressing Space, or simply talking over the answer stops the
+   speech and the generation, and starts listening again. The assistant's own voice picked up by
+   the microphone is recognised as echo and ignored; "stop" only stops the answer.
 
 ---
 
@@ -260,7 +261,7 @@ Example: the user says *"I'm from Vijayawada"*, then *"what about new hospitals?
 - Recognition language (English India / US / UK), voice, speaking rate.
 - Speech recognition and answer voice: in the browser or on the server (when the server offers them).
 - Smart end-of-question detection, and the pause used when it can't tell.
-- Conversation mode: hands-free; interrupt by speaking.
+- Interrupt by speaking (on by default), and conversation mode: keep listening after each answer.
 - Theme, and an API key if the server requires one.
 
 **Try these questions:**
@@ -411,6 +412,7 @@ docs/              design note, API reference, architecture diagram
 
 ```bash
 cd backend && pytest                  # 185 tests; no network or model download needed
+cd frontend && npm test               # echo / interruption rules (node, no browser)
 cd frontend && npm run test:e2e       # full voice flow in a real browser (needs the stack running)
 ruff check backend eval scripts       # lint
 ```
