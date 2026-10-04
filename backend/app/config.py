@@ -89,6 +89,9 @@ class Settings(BaseSettings):
     llm_timeout_s: float = 20.0
     llm_max_tokens: int = 300
     llm_temperature: float = 0.1
+    # Claim-level citation check (app/generation/verify.py): off | flag (mark unsupported sentences
+    # and fix misattributed citations) | strict (also drop unsupported sentences from the answer).
+    citation_verification: Literal["off", "flag", "strict"] = "flag"
 
     # ── Voice ────────────────────────────────────────────────────────────
     # Partial-transcript controller (WS /ws/voice): see app/voice/controller.py.

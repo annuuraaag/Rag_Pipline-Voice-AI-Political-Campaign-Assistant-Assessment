@@ -1,0 +1,66 @@
+{
+  "method": "lexical",
+  "cases": 696,
+  "per_kind": {
+    "verbatim": {
+      "n": 129,
+      "accuracy": 1.0,
+      "verdicts": {
+        "supported": 129
+      }
+    },
+    "framed": {
+      "n": 129,
+      "accuracy": 1.0,
+      "verdicts": {
+        "supported": 129
+      }
+    },
+    "changed figure": {
+      "n": 89,
+      "accuracy": 0.989,
+      "verdicts": {
+        "unsupported": 88,
+        "supported": 1
+      }
+    },
+    "wrong source": {
+      "n": 129,
+      "accuracy": 1.0,
+      "verdicts": {
+        "corrected": 129
+      }
+    },
+    "absent": {
+      "n": 129,
+      "accuracy": 1.0,
+      "verdicts": {
+        "unsupported": 129
+      }
+    },
+    "trimmed": {
+      "n": 56,
+      "accuracy": 1.0,
+      "verdicts": {
+        "supported": 56
+      }
+    },
+    "swapped place": {
+      "n": 35,
+      "accuracy": 1.0,
+      "verdicts": {
+        "unsupported": 35
+      }
+    }
+  },
+  "false_flag_rate": 0.0,
+  "catch_rate": 0.996,
+  "errors": [
+    {
+      "kind": "changed figure",
+      "verdict": "supported",
+      "claim": "The Alliance commits to an ambulance response time of 30 minutes in cities and 30 minutes in rural areas, with 1,000 new ambulances equipped for basic life support.",
+      "issues": []
+    }
+  ]
+}

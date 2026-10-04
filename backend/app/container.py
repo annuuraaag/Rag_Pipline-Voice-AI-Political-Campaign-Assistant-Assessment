@@ -13,6 +13,7 @@ from app.conversation.state import SessionStore
 from app.generation.llm.base import LLMProvider
 from app.generation.llm.extractive import ExtractiveLLM
 from app.generation.llm.openai_compat import OpenAICompatibleLLM
+from app.generation.verify import ClaimVerifier
 from app.ingestion.chunker import make_chunker
 from app.ingestion.ocr import OcrEngine
 from app.ingestion.registry import IN_PROGRESS, DocumentRegistry
@@ -123,8 +124,9 @@ def build_container(
     llm = llm or build_llm(s)
     sessions = SessionStore(ttl_s=s.session_ttl_s)
     rewriter = LLMRewriter(llm, timeout_s=s.rewrite_timeout_s) if s.query_rewriter == "llm" else None
+    verifier = ClaimVerifier(reranker=retriever.reranker) if s.citation_verification != "off" else None
     rag = RAGService(retriever, llm, metrics, sessions=sessions, llm_rewriter=rewriter,
-                     log_query_text=s.log_query_text)
+                     log_query_text=s.log_query_text, verifier=verifier, verify_policy=s.citation_verification)
     rag.default_campaign = s.default_campaign_id
     return Container(s, embedder, store, registry, ingestion, retriever, llm, rag, metrics, sessions=sessions,
                      reranker_status=reranker_status, ocr=ocr, startup_report=report, startup_timings_ms=timings,

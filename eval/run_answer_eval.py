@@ -16,8 +16,11 @@ in a fresh conversation, with its `history` turns replayed first. Metrics:
   Number faithfulness answers in which every number also appears in the passages given to the
                       model (catches invented figures, the most damaging hallucination here)
   Lexical support     share of the answer's content words found in the cited passages
+  Claim check         the runtime verifier (app/generation/verify.py): sentences supported by the
+                      passage they cite, supported after moving the citation, or unsupported
   Judge (optional)    --judge asks the configured LLM to count supported vs unsupported claims
-                      against the passages; reported separately as it is model-graded.
+                      against the passages; reported separately as it is model-graded. With both,
+                      the report also shows how often the verifier and the judge agree per answer.
 
 The LLM comes from the environment (GROQ_API_KEY → Groq); without a key the extractive fallback
 answers, which is faithful by construction, so the report labels which one produced the numbers.
@@ -113,6 +116,10 @@ async def evaluate(c, queries: list[dict], use_judge: bool) -> list[dict]:
                 gold_nums = set().union(*(numbers(g["evidence"]) for g in q["gold"]))
                 if gold_nums:
                     row["key_fact"] = bool(numbers(answer) & gold_nums)
+            if r.verification is not None:
+                v = r.verification
+                row["claims"] = {"supported": v.supported, "corrected": v.corrected, "unsupported": v.unsupported}
+                row["unsupported_claims"] = [x.text for x in v.claims if x.verdict == "unsupported"][:3]
             if use_judge and not c.llm.is_fallback:
                 row["judge"] = await judge(c.llm, answer, list(context.values()))
         rows.append(row)
@@ -139,6 +146,21 @@ def summarise(rows: list[dict]) -> dict:
         s[key], s[f"{key}_n"] = rate(answered, key)
     lex = [r["lexical_support"] for r in answered if r.get("lexical_support") is not None]
     s["lexical_support_mean"] = round(statistics.fmean(lex), 3) if lex else None
+    checked = [r["claims"] for r in answered if r.get("claims")]
+    if checked:
+        tot = {k: sum(x[k] for x in checked) for k in ("supported", "corrected", "unsupported")}
+        n_claims = sum(tot.values())
+        s["claims_total"] = n_claims
+        s["claims_supported"] = round(tot["supported"] / n_claims, 3) if n_claims else None
+        s["claims_corrected"] = round(tot["corrected"] / n_claims, 3) if n_claims else None
+        s["claims_unsupported"] = round(tot["unsupported"] / n_claims, 3) if n_claims else None
+        s["answers_fully_verified"] = round(sum(x["unsupported"] == 0 for x in checked) / len(checked), 3)
+    both = [r for r in answered if r.get("claims") and isinstance(r.get("judge"), dict) and "supported" in r["judge"]]
+    if both:
+        # Per answer: does the verifier's "all claims verified" agree with the judge's "no unsupported claim"?
+        s["verifier_judge_agreement"] = round(
+            sum((r["claims"]["unsupported"] == 0) == (r["judge"]["unsupported"] == 0) for r in both) / len(both), 3)
+        s["verifier_judge_n"] = len(both)
     judged = [r["judge"] for r in answered if isinstance(r.get("judge"), dict) and "supported" in r["judge"]]
     if judged:
         sup = sum(j["supported"] for j in judged)
@@ -169,6 +191,13 @@ def markdown(report: dict) -> str:
         f"| Number faithfulness (no invented figures) | {pctf(s['answer_numbers_grounded'])} | {s['answer_numbers_grounded_n']} |",
         f"| Lexical support by cited passages (mean) | {pctf(s['lexical_support_mean'])} | |",
     ]
+    if "claims_total" in s:
+        lines += [f"| Claim check: claims supported by the cited passage | {pctf(s['claims_supported'])} | {s['claims_total']} |",
+                  f"| Claim check: supported after correcting the citation | {pctf(s['claims_corrected'])} | {s['claims_total']} |",
+                  f"| Claim check: claims not found in any passage | {pctf(s['claims_unsupported'])} | {s['claims_total']} |",
+                  f"| Claim check: answers with every claim verified | {pctf(s['answers_fully_verified'])} | |"]
+    if "verifier_judge_n" in s:
+        lines.append(f"| Claim check agrees with the judge (per answer) | {pctf(s['verifier_judge_agreement'])} | {s['verifier_judge_n']} |")
     if "judge_n" in s:
         lines += [f"| Judge: claims supported by passages | {pctf(s['judge_supported_claims'])} | {s['judge_n']} |",
                   f"| Judge: answers with no unsupported claim | {pctf(s['judge_answers_fully_supported'])} | {s['judge_n']} |"]

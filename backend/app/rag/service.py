@@ -1,7 +1,7 @@
 """RAG orchestration.
 
     utterance → conversation state → query rewrite (+ filters) → hybrid retrieval → rerank
-              → answerability gate → grounded generation → citations → update memory
+              → answerability gate → grounded generation → citations → claim check → update memory
 
 Three entry points share one preparation path:
 * ``retrieve_only()`` – POST /retrieve (no LLM, read-only on conversation state)
@@ -12,6 +12,8 @@ Three entry points share one preparation path:
 The LLM is never called when the gate refuses, so refusals cost nothing and cannot
 be hallucinated. The *original* question is what the LLM answers; the rewritten
 query is used for retrieval and shown to the LLM only as an interpretation hint.
+Every answer sentence is then checked against the passages it cites (app/generation/verify.py):
+misattributed citations are corrected, unsupported sentences flagged (or dropped, when strict).
 """
 from __future__ import annotations
 
@@ -26,10 +28,11 @@ from starlette.concurrency import run_in_threadpool
 from app.conversation.rewriter import LLMRewriter, Rewrite, rewrite_with_rules
 from app.conversation.state import ConversationState, SessionStore
 from app.domain import DEFAULT_CAMPAIGN, MetadataFilter
-from app.generation.citations import finalize_answer, is_refusal
+from app.generation.citations import Citation, finalize_answer, is_refusal
 from app.generation.llm.base import Grounding, LLMError, LLMProvider
 from app.generation.llm.extractive import ExtractiveLLM
 from app.generation.prompt import REFUSAL_TEXT, build_messages
+from app.generation.verify import ClaimVerifier, Policy, Verification, citation_status
 from app.observability.logging import log_event
 from app.observability.metrics import LatencyMetrics
 from app.observability.timing import StageTimer
@@ -88,7 +91,7 @@ Reuse = Callable[[str, MetadataFilter], Awaitable["RetrievalResult | Stage1 | No
 class RAGService:
     def __init__(self, retriever: Retriever, llm: LLMProvider, metrics: LatencyMetrics,
                  sessions: SessionStore | None = None, llm_rewriter: LLMRewriter | None = None,
-                 log_query_text: bool = True):
+                 log_query_text: bool = True, verifier: ClaimVerifier | None = None, verify_policy: Policy = "flag"):
         self.retriever = retriever
         self.llm = llm
         self.fallback = ExtractiveLLM()
@@ -96,6 +99,8 @@ class RAGService:
         self.sessions = sessions or SessionStore()
         self.llm_rewriter = llm_rewriter
         self.log_query_text = log_query_text
+        self.verifier = verifier
+        self.verify_policy: Policy = verify_policy
         self.default_campaign = DEFAULT_CAMPAIGN
 
     # ── shared steps ────────────────────────────────────────────────────
@@ -160,6 +165,25 @@ class RAGService:
         msgs = build_messages(question, p.retrieval.results, interpreted=p.rewrite.query, history=history)
         return msgs, Grounding(p.rewrite.query, p.retrieval.results)
 
+    def _finalize(self, raw: str, question: str, p: Prepared, timer: StageTimer
+                  ) -> tuple[str, list[Citation], str | None, Verification | None]:
+        """Citations from metadata, then the claim check. Returns (answer, citations, refusal reason, report)."""
+        answer, citations, _ = finalize_answer(raw, p.retrieval.results)
+        report = None
+        if self.verifier is not None and self.verify_policy != "off" and not is_refusal(answer):
+            with timer.stage("verify"):
+                checked, report = self.verifier.verify(answer, p.retrieval.results,
+                                                       question=f"{question} {p.rewrite.query}", policy=self.verify_policy)
+            if checked != answer:
+                answer, citations, _ = finalize_answer(checked, p.retrieval.results)
+            for i, c in enumerate(citations, start=1):
+                c.verified = citation_status(report, i) if c.cited else None
+        if is_refusal(answer):
+            reason = "unverified" if report is not None and report.removed else "model_refused"
+        else:
+            reason = None
+        return answer, citations, reason, report
+
     @staticmethod
     def _remember(p: Prepared, answer: str) -> None:
         if p.state is not None and p.rewrite.understanding is not None:
@@ -167,7 +191,7 @@ class RAGService:
             p.state.observe_assistant(answer)
 
     def _log(self, request_id: str, p: Prepared, refusal: str | None, timings: dict, llm: LLMInfo,
-             citations: list) -> None:
+             citations: list, report: Verification | None = None) -> None:
         r = p.retrieval
         log_event(
             "query", request_id=request_id, campaign_id=p.filters.campaign_id,
@@ -177,6 +201,8 @@ class RAGService:
             top_score=r.top_score, threshold=r.threshold, decision=refusal or "answered",
             llm=llm.model_dump(), timings_ms=timings,
             source_ids=[c.chunk_id for c in citations if getattr(c, "cited", False)],
+            claims=None if report is None else {"supported": report.supported, "corrected": report.corrected,
+                                                "unsupported": report.unsupported, "removed": report.removed},
         )
 
     # ── retrieval only ──────────────────────────────────────────────────
@@ -201,6 +227,7 @@ class RAGService:
         llm_info = LLMInfo(provider=self.llm.name, model=self.llm.model, fallback=self.llm.is_fallback)
 
         refusal = None if p.ack else self._refusal(p.retrieval)
+        report = None
         if p.ack:
             answer, reason, citations = p.ack, None, []
             llm_info = LLMInfo(provider="none", model="none")
@@ -219,17 +246,16 @@ class RAGService:
                                        error=str(exc)[:200])
             if not llm_info.fallback:
                 llm_info.model = self.llm.model  # may differ from config if a retired model was replaced
-            answer, citations, _ = finalize_answer(raw, p.retrieval.results)
-            reason = "model_refused" if is_refusal(answer) else None
+            answer, citations, reason, report = self._finalize(raw, query, p, timer)
 
         self._remember(p, answer)
         timings = timer.as_dict()
         self.metrics.record("query", timings)
-        self._log(request_id, p, reason, timings, llm_info, citations)
+        self._log(request_id, p, reason, timings, llm_info, citations, report)
         return QueryResponse(
             request_id=request_id, query=query, answer=answer, answerable=reason is None, refusal_reason=reason,
             citations=citations, retrieval=self.trace(p), llm=llm_info, latency_ms=timings,
-            conversation=p.state.summary() if p.state else None,
+            conversation=p.state.summary() if p.state else None, verification=report,
         )
 
     # ── streaming path ──────────────────────────────────────────────────
@@ -248,6 +274,7 @@ class RAGService:
         refusal = None if p.ack else self._refusal(p.retrieval)
         llm_info = LLMInfo(provider=self.llm.name, model=self.llm.model, fallback=self.llm.is_fallback)
         parts: list[str] = []
+        report = None
         if p.ack or refusal:
             text, reason = (p.ack, None) if p.ack else refusal
             llm_info = LLMInfo(provider="none", model="none")
@@ -281,16 +308,16 @@ class RAGService:
                             yield {"type": "token", "text": tok}
             if not llm_info.fallback:
                 llm_info.model = self.llm.model
-            answer, citations, _ = finalize_answer("".join(parts), p.retrieval.results)
-            reason = "model_refused" if is_refusal(answer) else None
+            answer, citations, reason, report = self._finalize("".join(parts), query, p, timer)
 
         self._remember(p, answer)
         timings = timer.as_dict()
         self.metrics.record("query_stream", timings)
-        self._log(request_id, p, reason, timings, llm_info, citations)
+        self._log(request_id, p, reason, timings, llm_info, citations, report)
         yield {
             "type": "done", "request_id": request_id, "answer": answer, "answerable": reason is None,
             "refusal_reason": reason, "citations": [c.model_dump() for c in citations],
             "llm": llm_info.model_dump(), "latency_ms": timings, "cache": p.cache,
             "conversation": p.state.summary() if p.state else None,
+            "verification": report.model_dump() if report else None,
         }

@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.domain import MetadataFilter, ScoredChunk
 from app.generation.citations import Citation
+from app.generation.verify import Verification
 from app.ingestion.registry import DocumentRecord
 from app.lexicon import normalize_district
 
@@ -132,12 +133,13 @@ class QueryResponse(BaseModel):
     query: str
     answer: str
     answerable: bool
-    refusal_reason: str | None = None  # no_documents | below_threshold | model_refused
+    refusal_reason: str | None = None  # no_documents | below_threshold | model_refused | unverified
     citations: list[Citation]
     retrieval: RetrievalTrace
     llm: LLMInfo
     latency_ms: dict[str, float]
     conversation: dict | None = None
+    verification: Verification | None = None  # claim-by-claim check of the answer against its sources
 
 
 class UploadResponse(BaseModel):

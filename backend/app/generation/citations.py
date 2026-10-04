@@ -30,6 +30,7 @@ class Citation(BaseModel):
     score: float
     cited: bool             # True if the answer text references it
     snippet: str
+    verified: bool | None = None  # every claim citing it is supported by it (None: not cited / not checked)
 
 
 def _marker_numbers(marker_body: str) -> list[int]:

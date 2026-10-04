@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, BookOpen, ChevronDown, FileText, Gauge, GitBranch, Image, Table2, X, Zap } from "lucide-react";
+import {
+  ArrowRight, BookOpen, CheckCircle2, ChevronDown, FileText, Gauge, GitBranch, Image, RefreshCw, Table2, TriangleAlert, X, Zap,
+} from "lucide-react";
 import { Badge, EmptyState, IconButton, Meter, Tabs } from "./ui.jsx";
 import { cx, ms, pages, titleCase } from "../lib/format.js";
 
@@ -57,11 +59,46 @@ function Sources({ message, focus }) {
   }
   return (
     <div className="sources">
+      {message.verification?.claims?.some((c) => c.verdict !== "no_claim") && <ClaimCheck v={message.verification} />}
       {items.map((c) => (
         <SourceCard key={c.chunk_id} c={c} full={byChunk[c.chunk_id]?.text} scores={byChunk[c.chunk_id]?.scores}
                     focused={focus === c.source_id} ref={(el) => { refs.current[c.source_id] = el; }} />
       ))}
     </div>
+  );
+}
+
+const VERDICTS = {
+  supported: { icon: CheckCircle2, label: "Found in", tone: "ok" },
+  corrected: { icon: RefreshCw, label: "Citation corrected to", tone: "accent" },
+  unsupported: { icon: TriangleAlert, label: "Not found in any source", tone: "warn" },
+};
+
+function ClaimCheck({ v }) {
+  const claims = v.claims.filter((c) => c.verdict !== "no_claim");
+  return (
+    <section className="panel claims" aria-label="Claim check">
+      <div className="panel-label">Claim check · {v.method}{v.removed ? ` · ${v.removed} removed` : ""}</div>
+      <ol>
+        {claims.map((c) => {
+          const d = VERDICTS[c.verdict];
+          const Icon = d.icon;
+          return (
+            <li key={c.index} className={`claim claim-${d.tone}`}>
+              <Icon size={14} aria-hidden />
+              <div className="min0">
+                <div className="claim-text">{c.text}</div>
+                <div className="claim-meta">
+                  {d.label}{c.verdict !== "unsupported" && ` ${c.sources.map((n) => `S${n}`).join(", ")}`}
+                  {c.verdict === "corrected" && c.cited.length > 0 && ` (cited ${c.cited.map((n) => `S${n}`).join(", ")})`}
+                  {c.verdict === "unsupported" && c.issues.length > 0 && ` · ${c.issues.join("; ")}`}
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }
 
@@ -97,7 +134,10 @@ function SourceCard({ c, full, scores, focused, ref }) {
         </span>
       </div>
       <div className="source-actions">
-        <span className={cx("cited-label", c.cited ? "yes" : "no")}>{c.cited ? "Cited in the answer" : "Retrieved, not cited"}</span>
+        <span className={cx("cited-label", c.cited ? (c.verified === false ? "warn" : "yes") : "no")}>
+          {!c.cited ? "Retrieved, not cited" : c.verified === true ? "Cited · claims verified here"
+            : c.verified === false ? "Cited · a claim was not found here" : "Cited in the answer"}
+        </span>
         {full && full.length > (c.snippet?.length || 0) && (
           <button className="link-btn" onClick={() => setOpen(!open)}>
             {open ? "Show less" : "Show full passage"} <ChevronDown size={13} className={cx(open && "rot")} aria-hidden />
